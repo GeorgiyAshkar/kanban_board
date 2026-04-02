@@ -43,3 +43,29 @@ export interface TodayResponse {
   reminders_today: Array<{ id: number; task_id: number; remind_at: string; message?: string }>;
   stalled: Task[];
 }
+
+export interface TaskComment {
+  id: number;
+  task_id: number;
+  text: string;
+  created_at: string;
+  updated_at: string;
+  author: string;
+}
+
+export interface TaskReminder {
+  id: number;
+  task_id: number;
+  remind_at: string;
+  message?: string;
+  repeat_type: 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
+  is_completed: boolean;
+}
+
+export interface ChecklistItem {
+  id: number;
+  task_id: number;
+  title: string;
+  position: number;
+  is_done: boolean;
+}

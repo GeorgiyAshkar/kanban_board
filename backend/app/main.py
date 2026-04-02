@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import columns, comments, history, reminders, tags, tasks, today
+from app.api import checklist, columns, comments, history, reminders, tags, task_tags, tasks, today
 from app.db.database import Base, SessionLocal, engine
 from app.models.models import BoardColumn
 
@@ -20,6 +20,8 @@ app.include_router(history.router)
 app.include_router(comments.router)
 app.include_router(reminders.router)
 app.include_router(tags.router)
+app.include_router(task_tags.router)
+app.include_router(checklist.router)
 app.include_router(columns.router)
 app.include_router(today.router)
 

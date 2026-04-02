@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { BoardView } from '../components/board/BoardView';
 import { TaskDrawer } from '../components/task/TaskDrawer';
-import type { BoardColumn, Task } from '../types/task';
+import type { BoardColumn, ChecklistItem, HistoryItem, Task, TaskComment, TaskReminder } from '../types/task';
 
 interface Props {
   columns: BoardColumn[];
@@ -9,9 +9,29 @@ interface Props {
   query: string;
   activeTaskId: number | null;
   setActiveTaskId: (taskId: number | null) => void;
+  comments: TaskComment[];
+  reminders: TaskReminder[];
+  checklist: ChecklistItem[];
+  taskHistory: HistoryItem[];
+  onAddComment: (text: string) => Promise<void>;
+  onToggleChecklist: (itemId: number, isDone: boolean) => Promise<void>;
+  onAddChecklist: (title: string) => Promise<void>;
 }
 
-export function BoardPage({ columns, tasks, query, activeTaskId, setActiveTaskId }: Props) {
+export function BoardPage({
+  columns,
+  tasks,
+  query,
+  activeTaskId,
+  setActiveTaskId,
+  comments,
+  reminders,
+  checklist,
+  taskHistory,
+  onAddComment,
+  onToggleChecklist,
+  onAddChecklist,
+}: Props) {
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return tasks;
@@ -21,9 +41,18 @@ export function BoardPage({ columns, tasks, query, activeTaskId, setActiveTaskId
   const activeTask = tasks.find((t) => t.id === activeTaskId);
 
   return (
-    <main style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
+    <div className="board-layout">
       <BoardView columns={columns} tasks={visibleTasks} onOpenTask={setActiveTaskId} />
-      <TaskDrawer task={activeTask} />
-    </main>
+      <TaskDrawer
+        task={activeTask}
+        comments={comments}
+        reminders={reminders}
+        checklist={checklist}
+        history={taskHistory}
+        onAddComment={onAddComment}
+        onToggleChecklist={onToggleChecklist}
+        onAddChecklist={onAddChecklist}
+      />
+    </div>
   );
 }

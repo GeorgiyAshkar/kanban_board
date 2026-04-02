@@ -1,13 +1,26 @@
 import { api } from './client';
-import type { BoardColumn, HistoryItem, Task, TodayResponse } from '../types/task';
+import type {
+  BoardColumn,
+  ChecklistItem,
+  HistoryItem,
+  Task,
+  TaskComment,
+  TaskReminder,
+  TodayResponse,
+} from '../types/task';
 
 export const fetchTasks = async (): Promise<Task[]> => {
-  const { data } = await api.get<Task[]>('/tasks');
+  const { data } = await api.get<Task[]>('/tasks?archived=false');
+  return data;
+};
+
+export const fetchArchivedTasks = async (): Promise<Task[]> => {
+  const { data } = await api.get<Task[]>('/tasks?archived=true');
   return data;
 };
 
 export const createTask = async (title: string): Promise<Task> => {
-  const { data } = await api.post<Task>('/tasks', { title, description: '' });
+  const { data } = await api.post<Task>('/tasks', { title, description: '', priority: 'normal' });
   return data;
 };
 
@@ -21,7 +34,52 @@ export const fetchHistory = async (): Promise<HistoryItem[]> => {
   return data;
 };
 
+export const fetchTaskHistory = async (taskId: number): Promise<HistoryItem[]> => {
+  const { data } = await api.get<HistoryItem[]>(`/tasks/${taskId}/history`);
+  return data;
+};
+
+export const fetchTaskComments = async (taskId: number): Promise<TaskComment[]> => {
+  const { data } = await api.get<TaskComment[]>(`/tasks/${taskId}/comments`);
+  return data;
+};
+
+export const addTaskComment = async (taskId: number, text: string): Promise<TaskComment> => {
+  const { data } = await api.post<TaskComment>(`/tasks/${taskId}/comments`, { text, author: 'local_user' });
+  return data;
+};
+
+export const fetchTaskReminders = async (taskId: number): Promise<TaskReminder[]> => {
+  const { data } = await api.get<TaskReminder[]>(`/tasks/${taskId}/reminders`);
+  return data;
+};
+
+export const fetchTaskChecklist = async (taskId: number): Promise<ChecklistItem[]> => {
+  const { data } = await api.get<ChecklistItem[]>(`/tasks/${taskId}/checklist`);
+  return data;
+};
+
+export const patchChecklistItem = async (itemId: number, is_done: boolean): Promise<ChecklistItem> => {
+  const { data } = await api.patch<ChecklistItem>(`/checklist/${itemId}`, { is_done });
+  return data;
+};
+
+export const addChecklistItem = async (taskId: number, title: string): Promise<ChecklistItem> => {
+  const { data } = await api.post<ChecklistItem>(`/tasks/${taskId}/checklist`, { title });
+  return data;
+};
+
 export const fetchToday = async (): Promise<TodayResponse> => {
   const { data } = await api.get<TodayResponse>('/today');
+  return data;
+};
+
+export const archiveTask = async (taskId: number): Promise<Task> => {
+  const { data } = await api.post<Task>(`/tasks/${taskId}/archive`);
+  return data;
+};
+
+export const restoreTask = async (taskId: number): Promise<Task> => {
+  const { data } = await api.post<Task>(`/tasks/${taskId}/restore`);
   return data;
 };

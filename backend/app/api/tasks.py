@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import BoardColumn, Task
+from app.models.models import BoardColumn, Tag, Task, TaskComment, TaskTag
 from app.schemas.schemas import TaskCreate, TaskMove, TaskPatch, TaskRead
 from app.services.history import log_history
 from app.services.tasks import apply_task_patch
@@ -39,7 +39,21 @@ def list_tasks(
         stmt = stmt.where(Task.priority == priority)
     if q:
         like = f"%{q}%"
-        stmt = stmt.where(or_(Task.title.ilike(like), Task.description.ilike(like)))
+        tag_subquery = (
+            select(TaskTag.task_id)
+            .join(Tag, Tag.id == TaskTag.tag_id)
+            .where(Tag.name.ilike(like))
+            .subquery()
+        )
+        comment_subquery = select(TaskComment.task_id).where(TaskComment.text.ilike(like)).subquery()
+        stmt = stmt.where(
+            or_(
+                Task.title.ilike(like),
+                Task.description.ilike(like),
+                Task.id.in_(select(tag_subquery.c.task_id)),
+                Task.id.in_(select(comment_subquery.c.task_id)),
+            )
+        )
 
     return db.scalars(stmt.order_by(Task.board_column_id, Task.position, Task.id)).all()
 

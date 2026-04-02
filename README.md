@@ -1,44 +1,34 @@
-# Personal Kanban Board (MVP)
+# Personal Kanban Board (MVP+)
 
-Локальное приложение для личного управления задачами в формате Kanban-доски с журналом изменений и напоминаниями.
+Локальное приложение для управления задачами в формате Kanban с журналом изменений, комментариями, чек-листом и напоминаниями.
 
-## Стек
+## Текущий стек
 
 - **Frontend:** React + TypeScript + Vite + Zustand + TanStack Query
 - **Backend:** FastAPI + SQLAlchemy
 - **DB:** SQLite (`kanban.db`)
 
-## Реализовано в текущем MVP
+## Что реализовано по ТЗ
 
-- доска с системными колонками: `Входящие`, `К выполнению`, `В работе`, `На паузе`, `Готово`;
-- создание/редактирование/удаление/архивация/восстановление/завершение задач;
-- перемещение задач между колонками через `POST /tasks/{id}/move`;
-- журнал изменений (`task_history`) для ключевых действий;
-- комментарии к задачам;
-- напоминания по задачам;
-- экран `Сегодня` (`GET /today`) с блоками внимания;
-- глобальная история (`GET /history`) и история по задаче (`GET /tasks/{id}/history`);
-- задел под теги и управляемые колонки.
+### Backend
 
-## Структура
+- Базовые сущности: `tasks`, `task_history`, `task_comments`, `task_reminders`, `tags`, `task_tags`, `task_checklist_items`, `board_columns`.
+- Эндпоинты задач: `GET/POST/PATCH/DELETE /tasks`, `archive/restore/complete/move`.
+- История: `GET /history`, `GET /tasks/{id}/history`.
+- Комментарии: `GET/POST/PATCH/DELETE`.
+- Напоминания: `GET/POST/PATCH/DELETE`, `complete`.
+- Чек-лист: `GET/POST /tasks/{id}/checklist`, `PATCH/DELETE /checklist/{id}`.
+- Теги: `GET/POST/PATCH/DELETE /tags`, привязка/отвязка тегов к задаче.
+- Колонки: `GET/POST/PATCH/DELETE /columns`.
+- `GET /today` с блоками: просроченные, дедлайн сегодня, возврат сегодня, напоминания, без движения.
+- При изменениях создаются записи в `task_history`.
 
-```text
-backend/
-  app/
-    api/
-    db/
-    models/
-    schemas/
-    services/
-    main.py
-frontend/
-  src/
-    pages/
-    components/
-    api/
-    store/
-    types/
-```
+### Frontend
+
+- Интерфейс в стиле образца: верхняя синяя панель, кнопка «Новая задача», канбан-колонки, правая панель задачи, нижний блок истории.
+- Экран «Сегодня», «История», «Архив», «Настройки».
+- В карточке задачи: описание, поля, чек-лист, комментарии, история по задаче.
+- Быстрые операции: создание задачи, добавление комментария, добавление/чек чек-листа, восстановление из архива.
 
 ## Запуск backend
 
@@ -58,22 +48,10 @@ npm install
 npm run dev
 ```
 
-## Основные API эндпоинты
+## Что еще осталось до «полного» соответствия ТЗ
 
-- `GET /tasks`, `POST /tasks`, `GET /tasks/{id}`, `PATCH /tasks/{id}`, `DELETE /tasks/{id}`
-- `POST /tasks/{id}/archive`, `POST /tasks/{id}/restore`, `POST /tasks/{id}/complete`, `POST /tasks/{id}/move`
-- `GET /tasks/{id}/history`, `GET /history`
-- `GET /tasks/{id}/comments`, `POST /tasks/{id}/comments`, `PATCH /comments/{id}`, `DELETE /comments/{id}`
-- `GET /tasks/{id}/reminders`, `POST /tasks/{id}/reminders`, `PATCH /reminders/{id}`, `DELETE /reminders/{id}`, `POST /reminders/{id}/complete`
-- `GET /tags`, `POST /tags`, `PATCH /tags/{id}`, `DELETE /tags/{id}`
-- `GET /columns`, `POST /columns`, `PATCH /columns/{id}`, `DELETE /columns/{id}`
-- `GET /today`
-
-## Дальнейшие шаги
-
-- полноценный drag-and-drop UI (`dnd-kit`) с persist `position`;
-- чек-листы и связь задача-тег в UI;
-- архивный экран с восстановлением;
-- браузерные уведомления;
-- бэкап/импорт/экспорт;
-- аналитика и отчеты.
+- Drag-and-drop на клиенте (dnd-kit) с сохранением `position`.
+- Полноценные формы редактирования всех полей задачи в UI.
+- Фильтры по всем параметрам из ТЗ на UI (в backend часть уже есть).
+- Экспорт/импорт/бэкап и уведомления браузера.
+- Аналитика/отчеты из раздела 15.

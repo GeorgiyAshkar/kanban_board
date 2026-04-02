@@ -176,3 +176,31 @@ class TodayResponse(BaseModel):
     return_today: list[TaskRead]
     reminders_today: list[ReminderRead]
     stalled: list[TaskRead]
+
+
+class ChecklistItemCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    position: int = 0
+
+
+class ChecklistItemPatch(BaseModel):
+    title: Optional[str] = None
+    position: Optional[int] = None
+    is_done: Optional[bool] = None
+
+
+class ChecklistItemRead(BaseModel):
+    id: int
+    task_id: int
+    title: str
+    position: int
+    is_done: bool
+    done_at: Optional[datetime]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TaskTagLinkCreate(BaseModel):
+    tag_id: int
