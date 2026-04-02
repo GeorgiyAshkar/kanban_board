@@ -8,6 +8,7 @@ interface Props {
   onOpenTask: (taskId: number) => void;
   onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
   taskTagsByTaskId: Record<number, Tag[]>;
+  activeTaskId: number | null;
 }
 
 const priorityBg: Record<string, string> = {
@@ -17,7 +18,7 @@ const priorityBg: Record<string, string> = {
   critical: 'rgba(239, 68, 68, 0.18)',
 };
 
-export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTaskId }: Props) {
+export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTaskId, activeTaskId }: Props) {
   const grouped = useMemo(() => {
     const map = new Map<number, Task[]>();
     for (const col of columns) map.set(col.id, []);
@@ -56,7 +57,7 @@ export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTa
             return (
               <article
                 key={task.id}
-                className="card"
+                className={`card ${activeTaskId === task.id ? 'active' : ''}`}
                 style={{ background: priorityBg[task.priority] ?? priorityBg.normal }}
                 onClick={() => onOpenTask(task.id)}
                 draggable

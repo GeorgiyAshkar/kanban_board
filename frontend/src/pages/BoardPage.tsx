@@ -61,7 +61,7 @@ export function BoardPage({
 
   return (
     <div className="board-layout">
-      <BoardView columns={columns} tasks={visibleTasks} onOpenTask={setActiveTaskId} onMoveTask={onMoveTask} taskTagsByTaskId={taskTagsByTaskId} />
+      <BoardView columns={columns} tasks={visibleTasks} onOpenTask={setActiveTaskId} onMoveTask={onMoveTask} taskTagsByTaskId={taskTagsByTaskId} activeTaskId={activeTaskId} />
       <TaskDrawer
         task={activeTask}
         comments={comments}

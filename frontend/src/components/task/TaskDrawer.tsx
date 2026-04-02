@@ -59,7 +59,7 @@ export function TaskDrawer({
   }
 
   return (
-    <aside className="drawer">
+    <aside className="drawer open">
       <div className="drawer-header">
         <h2 className="drawer-title">{task.title}</h2>
         <div className="badges">
