@@ -16,6 +16,7 @@ interface Props {
   onSaveTask: (patch: Partial<Task>) => Promise<void>;
   onAddTag: (tagId: number) => Promise<void>;
   onRemoveTag: (tagId: number) => Promise<void>;
+  onCreateTagAndAdd: (name: string) => Promise<void>;
 }
 
 export function TaskDrawer({
@@ -32,6 +33,7 @@ export function TaskDrawer({
   onSaveTask,
   onAddTag,
   onRemoveTag,
+  onCreateTagAndAdd,
 }: Props) {
   const [commentText, setCommentText] = useState('');
   const [draftTitle, setDraftTitle] = useState(task?.title ?? '');
@@ -118,6 +120,17 @@ export function TaskDrawer({
               <option key={tag.id} value={tag.id}>{tag.name}</option>
             ))}
           </select>
+          <button
+            className="small-btn"
+            style={{ marginLeft: 8 }}
+            onClick={async () => {
+              const name = window.prompt('Название нового тега');
+              if (!name) return;
+              await onCreateTagAndAdd(name);
+            }}
+          >
+            + Новый тег
+          </button>
         </div>
       </section>
 

@@ -23,6 +23,7 @@ interface Props {
   allTags: Tag[];
   onAddTag: (tagId: number) => Promise<void>;
   onRemoveTag: (tagId: number) => Promise<void>;
+  onCreateTagAndAdd: (name: string) => Promise<void>;
 }
 
 export function BoardPage({
@@ -44,6 +45,7 @@ export function BoardPage({
   allTags,
   onAddTag,
   onRemoveTag,
+  onCreateTagAndAdd,
 }: Props) {
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -70,6 +72,7 @@ export function BoardPage({
         allTags={allTags}
         onAddTag={onAddTag}
         onRemoveTag={onRemoveTag}
+        onCreateTagAndAdd={onCreateTagAndAdd}
       />
     </div>
   );

@@ -17,8 +17,9 @@ body { margin: 0; background: #eef2f8; }
   gap: 16px;
 }
 .topbar .brand { font-size: 30px; }
-.topbar .title { font-size: 30px; font-weight: 700; margin-right: 20px; }
+.topbar .title-link { font-size: 30px; font-weight: 700; margin-right: 20px; color: #fff; background: transparent; border: none; cursor: pointer; }
 .topbar button { background: transparent; border: none; color: #e5ecff; font-size: 22px; cursor: pointer; }
+.topbar .top-create { border: 1px solid #93c5fd; color: #fff; background: #2f7ddd; font-size: 20px; }
 .topbar .search { margin-left: auto; }
 .topbar input { height: 40px; border-radius: 8px; border: none; padding: 0 14px; width: 380px; }
 
@@ -29,7 +30,6 @@ body { margin: 0; background: #eef2f8; }
   gap: 14px;
 }
 
-.new-task-row { display: flex; justify-content: flex-end; }
 .primary-btn {
   background: #2f7ddd;
   color: #fff;

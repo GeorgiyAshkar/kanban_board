@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addChecklistItem,
@@ -72,8 +72,6 @@ export default function App() {
     enabled: Boolean(activeTaskId),
   });
 
-  const boardHistory = useMemo(() => (historyQuery.data ?? []).slice(0, 8), [historyQuery.data]);
-
   const refreshBoardData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['tasks'] }),
@@ -113,14 +111,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TopBar query={query} onQueryChange={setQuery} setPage={setPage} />
+      <TopBar query={query} onQueryChange={setQuery} setPage={setPage} onCreateTask={handleCreateTask} />
 
       <div className="content">
         {page === 'board' && (
           <>
-            <div className="new-task-row">
-              <button className="primary-btn" onClick={handleCreateTask}>+ Новая задача</button>
-            </div>
             <BoardPage
               columns={columnsQuery.data ?? []}
               tasks={tasksQuery.data ?? []}
@@ -171,15 +166,13 @@ export default function App() {
                 await removeTaskTag(activeTaskId, tagId);
                 await refreshBoardData();
               }}
+              onCreateTagAndAdd={async (name) => {
+                if (!activeTaskId) return;
+                const tag = await createTag(name);
+                await addTaskTag(activeTaskId, tag.id);
+                await refreshBoardData();
+              }}
             />
-            <section className="history-panel">
-              <h3>История изменений</h3>
-              {boardHistory.map((item) => (
-                <div key={item.id} className="history-row">
-                  {new Date(item.created_at).toLocaleString()} — {item.action_type}
-                </div>
-              ))}
-            </section>
           </>
         )}
 
