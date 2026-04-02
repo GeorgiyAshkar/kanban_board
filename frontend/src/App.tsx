@@ -79,11 +79,15 @@ export default function App() {
 
   useEffect(() => {
     const loadTaskTags = async () => {
-      const tasks = tasksQuery.data ?? [];
-      const entries = await Promise.all(
-        tasks.map(async (task) => [task.id, await fetchTaskTags(task.id)] as const),
-      );
-      setTaskTagsByTaskId(Object.fromEntries(entries));
+      try {
+        const tasks = tasksQuery.data ?? [];
+        const entries = await Promise.all(
+          tasks.map(async (task) => [task.id, await fetchTaskTags(task.id)] as const),
+        );
+        setTaskTagsByTaskId(Object.fromEntries(entries));
+      } catch {
+        setTaskTagsByTaskId({});
+      }
     };
     void loadTaskTags();
   }, [tasksQuery.data]);

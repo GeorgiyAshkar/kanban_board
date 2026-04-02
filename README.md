@@ -56,6 +56,8 @@ npm install
 npm run dev
 ```
 
+`Vite` dev-server настроен с proxy `/api -> http://localhost:8000`, поэтому frontend в dev-режиме корректно ходит в backend без CORS-проблем.
+
 ## Docker запуск
 
 ### 1) Локальный запуск через Docker Compose
