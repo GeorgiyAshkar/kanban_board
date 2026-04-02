@@ -48,6 +48,12 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+Для доступа к backend из локальной сети используйте:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
 ## Запуск frontend
 
 ```bash
@@ -57,6 +63,7 @@ npm run dev
 ```
 
 `Vite` dev-server настроен с proxy `/api -> http://localhost:8000`, поэтому frontend в dev-режиме корректно ходит в backend без CORS-проблем.
+`Vite` также запущен с `host: 0.0.0.0`, поэтому приложение доступно по внешнему IP вашей машины: `http://<YOUR_LAN_IP>:5173`.
 
 ## Docker запуск
 
