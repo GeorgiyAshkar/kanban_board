@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ChecklistItem, HistoryItem, Task, TaskComment, TaskReminder } from '../../types/task';
+import type { Tag } from '../../api/tasks';
 
 interface Props {
   task?: Task;
@@ -7,9 +8,14 @@ interface Props {
   reminders: TaskReminder[];
   checklist: ChecklistItem[];
   history: HistoryItem[];
+  taskTags: Tag[];
+  allTags: Tag[];
   onAddComment: (text: string) => Promise<void>;
   onToggleChecklist: (itemId: number, isDone: boolean) => Promise<void>;
   onAddChecklist: (title: string) => Promise<void>;
+  onSaveTask: (patch: Partial<Task>) => Promise<void>;
+  onAddTag: (tagId: number) => Promise<void>;
+  onRemoveTag: (tagId: number) => Promise<void>;
 }
 
 export function TaskDrawer({
@@ -18,11 +24,30 @@ export function TaskDrawer({
   reminders,
   checklist,
   history,
+  taskTags,
+  allTags,
   onAddComment,
   onToggleChecklist,
   onAddChecklist,
+  onSaveTask,
+  onAddTag,
+  onRemoveTag,
 }: Props) {
   const [commentText, setCommentText] = useState('');
+  const [draftTitle, setDraftTitle] = useState(task?.title ?? '');
+  const [draftDescription, setDraftDescription] = useState(task?.description ?? '');
+  const [draftStatus, setDraftStatus] = useState(task?.status ?? 'inbox');
+  const [draftPriority, setDraftPriority] = useState(task?.priority ?? 'normal');
+
+  const freeTags = useMemo(() => allTags.filter((tag) => !taskTags.some((tt) => tt.id === tag.id)), [allTags, taskTags]);
+
+  useEffect(() => {
+    if (!task) return;
+    setDraftTitle(task.title);
+    setDraftDescription(task.description);
+    setDraftStatus(task.status);
+    setDraftPriority(task.priority);
+  }, [task]);
 
   if (!task) {
     return <aside className="drawer"><div className="section"><h4>Выберите задачу</h4></div></aside>;
@@ -40,73 +65,95 @@ export function TaskDrawer({
       </div>
 
       <section className="section">
-        <h4>Описание</h4>
-        <p>{task.description || 'Нужно добавить описание задачи.'}</p>
+        <h4>Редактирование</h4>
+        <div className="editor-grid">
+          <input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Название" />
+          <textarea value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} placeholder="Описание" rows={3} />
+          <div className="row-fields">
+            <select value={draftStatus} onChange={(e) => setDraftStatus(e.target.value)}>
+              <option value="inbox">Входящие</option>
+              <option value="todo">К выполнению</option>
+              <option value="in_progress">В работе</option>
+              <option value="paused">На паузе</option>
+              <option value="done">Готово</option>
+            </select>
+            <select value={draftPriority} onChange={(e) => setDraftPriority(e.target.value)}>
+              <option value="low">Низкий</option>
+              <option value="normal">Обычный</option>
+              <option value="high">Высокий</option>
+              <option value="critical">Критический</option>
+            </select>
+          </div>
+          <button
+            className="small-btn"
+            onClick={async () => {
+              await onSaveTask({ title: draftTitle, description: draftDescription, status: draftStatus, priority: draftPriority as Task['priority'] });
+            }}
+          >
+            Сохранить изменения
+          </button>
+        </div>
       </section>
 
       <section className="section">
-        <h4>Поля</h4>
-        <p><b>Приоритет:</b> {task.priority}</p>
-        <p><b>Дедлайн:</b> {task.deadline_at ? new Date(task.deadline_at).toLocaleString() : '—'}</p>
-        <p><b>Напоминания:</b> {reminders.length}</p>
+        <h4>Теги</h4>
+        <div className="badges">
+          {taskTags.map((tag) => (
+            <button key={tag.id} className="badge" style={{ background: tag.color }} onClick={() => onRemoveTag(tag.id)}>
+              {tag.name} ×
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <select
+            onChange={async (e) => {
+              const tagId = Number(e.target.value);
+              if (!tagId) return;
+              await onAddTag(tagId);
+              e.currentTarget.value = '';
+            }}
+          >
+            <option value="">Добавить тег...</option>
+            {freeTags.map((tag) => (
+              <option key={tag.id} value={tag.id}>{tag.name}</option>
+            ))}
+          </select>
+        </div>
       </section>
 
-      <section className="section">
+      <section className="section scroll-block">
         <h4>Чек-лист</h4>
         <ul>
           {checklist.map((item) => (
             <li key={item.id}>
               <label>
-                <input
-                  type="checkbox"
-                  checked={item.is_done}
-                  onChange={() => onToggleChecklist(item.id, !item.is_done)}
-                />{' '}
-                {item.title}
+                <input type="checkbox" checked={item.is_done} onChange={() => onToggleChecklist(item.id, !item.is_done)} /> {item.title}
               </label>
             </li>
           ))}
         </ul>
-        <button
-          className="small-btn"
-          onClick={async () => {
-            const title = window.prompt('Новый пункт чек-листа');
-            if (!title) return;
-            await onAddChecklist(title);
-          }}
-        >
+        <button className="small-btn" onClick={async () => { const title = window.prompt('Новый пункт чек-листа'); if (title) await onAddChecklist(title); }}>
           Добавить пункт
         </button>
       </section>
 
-      <section className="section">
+      <section className="section scroll-block">
         <h4>Комментарии</h4>
         {comments.map((comment) => (
           <p key={comment.id}><b>{comment.author}:</b> {comment.text}</p>
         ))}
       </section>
 
-      <section className="section">
+      <section className="section scroll-block">
         <h4>История задачи</h4>
-        {history.slice(0, 4).map((item) => (
+        {history.map((item) => (
           <p key={item.id}>{new Date(item.created_at).toLocaleString()} — {item.action_type}</p>
         ))}
       </section>
 
       <div className="comment-input">
-        <input
-          value={commentText}
-          onChange={(e) => setCommentText(e.target.value)}
-          placeholder="Добавить комментарий..."
-        />
-        <button
-          className="primary-btn"
-          onClick={async () => {
-            if (!commentText.trim()) return;
-            await onAddComment(commentText);
-            setCommentText('');
-          }}
-        >
+        <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Добавить комментарий..." />
+        <button className="primary-btn" onClick={async () => { if (!commentText.trim()) return; await onAddComment(commentText); setCommentText(''); }}>
           Отправить
         </button>
       </div>

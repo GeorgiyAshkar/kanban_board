@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { BoardView } from '../components/board/BoardView';
 import { TaskDrawer } from '../components/task/TaskDrawer';
 import type { BoardColumn, ChecklistItem, HistoryItem, Task, TaskComment, TaskReminder } from '../types/task';
+import type { Tag } from '../api/tasks';
 
 interface Props {
   columns: BoardColumn[];
@@ -16,6 +17,12 @@ interface Props {
   onAddComment: (text: string) => Promise<void>;
   onToggleChecklist: (itemId: number, isDone: boolean) => Promise<void>;
   onAddChecklist: (title: string) => Promise<void>;
+  onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
+  onSaveTask: (patch: Partial<Task>) => Promise<void>;
+  taskTags: Tag[];
+  allTags: Tag[];
+  onAddTag: (tagId: number) => Promise<void>;
+  onRemoveTag: (tagId: number) => Promise<void>;
 }
 
 export function BoardPage({
@@ -31,6 +38,12 @@ export function BoardPage({
   onAddComment,
   onToggleChecklist,
   onAddChecklist,
+  onMoveTask,
+  onSaveTask,
+  taskTags,
+  allTags,
+  onAddTag,
+  onRemoveTag,
 }: Props) {
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -42,7 +55,7 @@ export function BoardPage({
 
   return (
     <div className="board-layout">
-      <BoardView columns={columns} tasks={visibleTasks} onOpenTask={setActiveTaskId} />
+      <BoardView columns={columns} tasks={visibleTasks} onOpenTask={setActiveTaskId} onMoveTask={onMoveTask} />
       <TaskDrawer
         task={activeTask}
         comments={comments}
@@ -52,6 +65,11 @@ export function BoardPage({
         onAddComment={onAddComment}
         onToggleChecklist={onToggleChecklist}
         onAddChecklist={onAddChecklist}
+        onSaveTask={onSaveTask}
+        taskTags={taskTags}
+        allTags={allTags}
+        onAddTag={onAddTag}
+        onRemoveTag={onRemoveTag}
       />
     </div>
   );

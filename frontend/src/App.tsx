@@ -2,8 +2,12 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addChecklistItem,
+  addTaskTag,
   addTaskComment,
-  createTask,
+  createTag,
+  createTaskWithPayload,
+  fetchTags,
+  fetchTaskTags,
   fetchArchivedTasks,
   fetchColumns,
   fetchHistory,
@@ -13,7 +17,10 @@ import {
   fetchTaskReminders,
   fetchTasks,
   fetchToday,
+  moveTask,
   patchChecklistItem,
+  patchTask,
+  removeTaskTag,
   restoreTask,
 } from './api/tasks';
 import { TopBar } from './components/common/TopBar';
@@ -37,6 +44,7 @@ export default function App() {
   const columnsQuery = useQuery({ queryKey: ['columns'], queryFn: fetchColumns });
   const historyQuery = useQuery({ queryKey: ['history'], queryFn: fetchHistory });
   const todayQuery = useQuery({ queryKey: ['today'], queryFn: fetchToday });
+  const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: fetchTags });
 
   const taskCommentsQuery = useQuery({
     queryKey: ['task-comments', activeTaskId],
@@ -58,6 +66,11 @@ export default function App() {
     queryFn: () => fetchTaskHistory(activeTaskId!),
     enabled: Boolean(activeTaskId),
   });
+  const taskTagsQuery = useQuery({
+    queryKey: ['task-tags', activeTaskId],
+    queryFn: () => fetchTaskTags(activeTaskId!),
+    enabled: Boolean(activeTaskId),
+  });
 
   const boardHistory = useMemo(() => (historyQuery.data ?? []).slice(0, 8), [historyQuery.data]);
 
@@ -70,13 +83,31 @@ export default function App() {
       queryClient.invalidateQueries({ queryKey: ['task-comments', activeTaskId] }),
       queryClient.invalidateQueries({ queryKey: ['task-checklist', activeTaskId] }),
       queryClient.invalidateQueries({ queryKey: ['task-history', activeTaskId] }),
+      queryClient.invalidateQueries({ queryKey: ['task-tags', activeTaskId] }),
+      queryClient.invalidateQueries({ queryKey: ['tags'] }),
     ]);
   };
 
   const handleCreateTask = async () => {
     const title = window.prompt('Название задачи');
     if (!title) return;
-    await createTask(title);
+    const status = window.prompt('Статус (inbox/todo/in_progress/paused/done)', 'inbox') ?? 'inbox';
+    const priority = (window.prompt('Приоритет (low/normal/high/critical)', 'normal') ?? 'normal') as
+      | 'low'
+      | 'normal'
+      | 'high'
+      | 'critical';
+    const tags = window.prompt('Теги через запятую (опционально)', '') ?? '';
+
+    const task = await createTaskWithPayload({ title, description: '', status, priority });
+    const tagNames = tags.split(',').map((x) => x.trim()).filter(Boolean);
+    for (const name of tagNames) {
+      let tag = (tagsQuery.data ?? []).find((t) => t.name.toLowerCase() === name.toLowerCase());
+      if (!tag) {
+        tag = await createTag(name);
+      }
+      await addTaskTag(task.id, tag.id);
+    }
     await refreshBoardData();
   };
 
@@ -100,6 +131,15 @@ export default function App() {
               reminders={taskRemindersQuery.data ?? []}
               checklist={taskChecklistQuery.data ?? []}
               taskHistory={taskHistoryQuery.data ?? []}
+              onMoveTask={async (taskId, columnId, position) => {
+                const statusMap: Record<number, string> = {};
+                (columnsQuery.data ?? []).forEach((col) => {
+                  const name = col.name.toLowerCase();
+                  statusMap[col.id] = name.includes('вход') ? 'inbox' : name.includes('выполн') ? 'todo' : name.includes('работ') ? 'in_progress' : name.includes('пауз') ? 'paused' : name.includes('готов') ? 'done' : 'inbox';
+                });
+                await moveTask(taskId, columnId, statusMap[columnId], position);
+                await refreshBoardData();
+              }}
               onAddComment={async (text) => {
                 if (!activeTaskId) return;
                 await addTaskComment(activeTaskId, text);
@@ -112,6 +152,23 @@ export default function App() {
               onAddChecklist={async (title) => {
                 if (!activeTaskId) return;
                 await addChecklistItem(activeTaskId, title);
+                await refreshBoardData();
+              }}
+              onSaveTask={async (patch) => {
+                if (!activeTaskId) return;
+                await patchTask(activeTaskId, patch);
+                await refreshBoardData();
+              }}
+              taskTags={taskTagsQuery.data ?? []}
+              allTags={tagsQuery.data ?? []}
+              onAddTag={async (tagId) => {
+                if (!activeTaskId) return;
+                await addTaskTag(activeTaskId, tagId);
+                await refreshBoardData();
+              }}
+              onRemoveTag={async (tagId) => {
+                if (!activeTaskId) return;
+                await removeTaskTag(activeTaskId, tagId);
                 await refreshBoardData();
               }}
             />

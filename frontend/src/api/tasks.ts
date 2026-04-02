@@ -24,6 +24,21 @@ export const createTask = async (title: string): Promise<Task> => {
   return data;
 };
 
+export const createTaskWithPayload = async (payload: Partial<Task> & { title: string }): Promise<Task> => {
+  const { data } = await api.post<Task>('/tasks', payload);
+  return data;
+};
+
+export const patchTask = async (taskId: number, payload: Partial<Task>): Promise<Task> => {
+  const { data } = await api.patch<Task>(`/tasks/${taskId}`, payload);
+  return data;
+};
+
+export const moveTask = async (taskId: number, board_column_id: number, status?: string, position?: number): Promise<Task> => {
+  const { data } = await api.post<Task>(`/tasks/${taskId}/move`, { board_column_id, status, position });
+  return data;
+};
+
 export const fetchColumns = async (): Promise<BoardColumn[]> => {
   const { data } = await api.get<BoardColumn[]>('/columns');
   return data;
@@ -82,4 +97,34 @@ export const archiveTask = async (taskId: number): Promise<Task> => {
 export const restoreTask = async (taskId: number): Promise<Task> => {
   const { data } = await api.post<Task>(`/tasks/${taskId}/restore`);
   return data;
+};
+
+export interface Tag {
+  id: number;
+  name: string;
+  color: string;
+}
+
+export const fetchTags = async (): Promise<Tag[]> => {
+  const { data } = await api.get<Tag[]>('/tags');
+  return data;
+};
+
+export const createTag = async (name: string, color = '#64748b'): Promise<Tag> => {
+  const { data } = await api.post<Tag>('/tags', { name, color });
+  return data;
+};
+
+export const fetchTaskTags = async (taskId: number): Promise<Tag[]> => {
+  const { data } = await api.get<Tag[]>(`/tasks/${taskId}/tags`);
+  return data;
+};
+
+export const addTaskTag = async (taskId: number, tag_id: number): Promise<Tag> => {
+  const { data } = await api.post<Tag>(`/tasks/${taskId}/tags`, { tag_id });
+  return data;
+};
+
+export const removeTaskTag = async (taskId: number, tag_id: number): Promise<void> => {
+  await api.delete(`/tasks/${taskId}/tags/${tag_id}`);
 };

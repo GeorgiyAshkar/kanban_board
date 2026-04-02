@@ -12,6 +12,7 @@ export function TopBar({ query, onQueryChange, setPage }: Props) {
       <button onClick={() => setPage('today')}>Сегодня</button>
       <button onClick={() => setPage('history')}>История</button>
       <button onClick={() => setPage('archive')}>Архив</button>
+      <button onClick={() => setPage('board')}>Доска</button>
       <button onClick={() => setPage('settings')}>⚙</button>
       <div className="search">
         <input value={query} onChange={(e) => onQueryChange(e.target.value)} placeholder="Поиск..." />

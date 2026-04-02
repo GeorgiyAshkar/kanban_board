@@ -5,6 +5,7 @@ interface Props {
   columns: BoardColumn[];
   tasks: Task[];
   onOpenTask: (taskId: number) => void;
+  onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
 }
 
 const priorityMeta: Record<string, { label: string; color: string }> = {
@@ -14,7 +15,7 @@ const priorityMeta: Record<string, { label: string; color: string }> = {
   critical: { label: 'Критичный', color: '#ef4444' },
 };
 
-export function BoardView({ columns, tasks, onOpenTask }: Props) {
+export function BoardView({ columns, tasks, onOpenTask, onMoveTask }: Props) {
   const grouped = useMemo(() => {
     const map = new Map<number, Task[]>();
     for (const col of columns) map.set(col.id, []);
@@ -35,12 +36,31 @@ export function BoardView({ columns, tasks, onOpenTask }: Props) {
   return (
     <div className="columns">
       {columns.map((column) => (
-        <section key={column.id} className="column">
+        <section
+          key={column.id}
+          className="column"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={async (e) => {
+            e.preventDefault();
+            const taskId = Number(e.dataTransfer.getData('taskId'));
+            if (!taskId) return;
+            const targetSize = (grouped.get(column.id) ?? []).length;
+            await onMoveTask(taskId, column.id, targetSize);
+          }}
+        >
           <h3>{column.name}</h3>
           {(grouped.get(column.id) ?? []).map((task) => {
             const priority = priorityMeta[task.priority] ?? priorityMeta.normal;
             return (
-              <article key={task.id} className="card" onClick={() => onOpenTask(task.id)}>
+              <article
+                key={task.id}
+                className="card"
+                onClick={() => onOpenTask(task.id)}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('taskId', String(task.id));
+                }}
+              >
                 <div className="card-title">{task.title}</div>
                 <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
                 <div className="badges">
