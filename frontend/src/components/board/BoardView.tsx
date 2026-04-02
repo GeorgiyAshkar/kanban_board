@@ -65,14 +65,16 @@ export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTa
                 }}
               >
                 <div className="card-title">{task.title}</div>
-                <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
-                <div className="badges">
-                  {tags.slice(0, 3).map((tag) => (
-                    <span key={tag.id} className="tag-chip" style={{ borderColor: tag.color, color: tag.color }}>
-                      {tag.name}
-                    </span>
-                  ))}
-                  {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
+                <div className="card-details">
+                  <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
+                  <div className="badges">
+                    {tags.slice(0, 3).map((tag) => (
+                      <span key={tag.id} className="tag-chip" style={{ borderColor: tag.color, color: tag.color }}>
+                        {tag.name}
+                      </span>
+                    ))}
+                    {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
+                  </div>
                 </div>
               </article>
             );
