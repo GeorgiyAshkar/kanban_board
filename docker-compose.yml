@@ -1,0 +1,22 @@
+services:
+  backend:
+    image: kanban-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: kanban_backend
+    volumes:
+      - ./data/kanban.db:/app/backend/kanban.db
+    expose:
+      - "8000"
+
+  frontend:
+    image: kanban-frontend:latest
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: kanban_frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

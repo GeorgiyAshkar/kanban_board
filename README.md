@@ -56,6 +56,35 @@ npm install
 npm run dev
 ```
 
+## Docker запуск
+
+### 1) Локальный запуск через Docker Compose
+
+```bash
+docker compose up --build -d
+```
+
+После запуска:
+- frontend: `http://localhost:8080`
+- backend API: `http://localhost:8080/api/...` (через nginx-proxy)
+
+### 2) Сборка и упаковка Docker-образов в tar.gz
+
+```bash
+./build_and_package_docker.sh
+```
+
+Скрипт:
+- собирает `kanban-backend:latest` и `kanban-frontend:latest`;
+- упаковывает их в архив `kanban_docker_images_YYYYMMDD_HHMMSS.tar.gz`.
+
+### 3) Разворачивание архива на удаленном сервере
+
+```bash
+gunzip -c kanban_docker_images_YYYYMMDD_HHMMSS.tar.gz | docker load
+docker compose up -d
+```
+
 ## Что еще осталось до «полного» соответствия ТЗ
 
 - Перевести текущий базовый drag-and-drop на `dnd-kit` с расширенными сценариями reorder.
