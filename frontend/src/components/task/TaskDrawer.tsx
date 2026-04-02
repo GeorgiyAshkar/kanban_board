@@ -107,7 +107,7 @@ export function TaskDrawer({
         </div>
 
         {activeTab === 'tags' && (
-          <div className="tab-body scroll-block-lg">
+          <div className="tab-body">
             <div className="badges">
               {taskTags.map((tag) => (
                 <button key={tag.id} className="badge" style={{ background: tag.color }} onClick={() => onRemoveTag(tag.id)}>
@@ -146,7 +146,7 @@ export function TaskDrawer({
         )}
 
         {activeTab === 'checklist' && (
-          <div className="tab-body scroll-block-lg">
+          <div className="tab-body">
             <ul>
               {checklist.map((item) => (
                 <li key={item.id}>
@@ -163,7 +163,7 @@ export function TaskDrawer({
         )}
 
         {activeTab === 'comments' && (
-          <div className="tab-body scroll-block-lg">
+          <div className="tab-body">
             {comments.map((comment) => (
               <p key={comment.id}><b>{comment.author}:</b> {comment.text}</p>
             ))}
@@ -171,7 +171,7 @@ export function TaskDrawer({
         )}
 
         {activeTab === 'history' && (
-          <div className="tab-body scroll-block-lg">
+          <div className="tab-body">
             {history.map((item) => (
               <p key={item.id}>{new Date(item.created_at).toLocaleString()} — {item.action_type}</p>
             ))}

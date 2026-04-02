@@ -33,6 +33,7 @@ import { ArchivePage } from './pages/ArchivePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useUIStore } from './store/uiStore';
 import './styles.css';
+import fontConfig from './font_config.json';
 
 type Page = 'board' | 'today' | 'history' | 'archive' | 'settings';
 
@@ -86,6 +87,18 @@ export default function App() {
     };
     void loadTaskTags();
   }, [tasksQuery.data]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--font-title', fontConfig.font_title);
+    root.style.setProperty('--font-column-title', fontConfig.font_column_title);
+    root.style.setProperty('--font-card-title', fontConfig.font_card_title);
+    root.style.setProperty('--font-section-title', fontConfig.font_section_title);
+    root.style.setProperty('--font-text', fontConfig.font_text);
+    root.style.setProperty('--font-meta', fontConfig.font_meta);
+    root.style.setProperty('--font-button', fontConfig.font_button);
+    root.style.setProperty('--font-drawer-title', fontConfig.font_drawer_title);
+  }, []);
 
   const refreshBoardData = async () => {
     await Promise.all([
