@@ -1,21 +1,23 @@
 import { useMemo } from 'react';
 import type { BoardColumn, Task } from '../../types/task';
+import type { Tag } from '../../api/tasks';
 
 interface Props {
   columns: BoardColumn[];
   tasks: Task[];
   onOpenTask: (taskId: number) => void;
   onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
+  taskTagsByTaskId: Record<number, Tag[]>;
 }
 
-const priorityMeta: Record<string, { label: string; color: string }> = {
-  low: { label: 'Низкий', color: '#22c55e' },
-  normal: { label: 'Обычный', color: '#3b82f6' },
-  high: { label: 'Высокий', color: '#f59e0b' },
-  critical: { label: 'Критичный', color: '#ef4444' },
+const priorityBg: Record<string, string> = {
+  low: 'rgba(34, 197, 94, 0.15)',
+  normal: 'rgba(250, 204, 21, 0.18)',
+  high: 'rgba(249, 115, 22, 0.18)',
+  critical: 'rgba(239, 68, 68, 0.18)',
 };
 
-export function BoardView({ columns, tasks, onOpenTask, onMoveTask }: Props) {
+export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTaskId }: Props) {
   const grouped = useMemo(() => {
     const map = new Map<number, Task[]>();
     for (const col of columns) map.set(col.id, []);
@@ -50,11 +52,12 @@ export function BoardView({ columns, tasks, onOpenTask, onMoveTask }: Props) {
         >
           <h3>{column.name}</h3>
           {(grouped.get(column.id) ?? []).map((task) => {
-            const priority = priorityMeta[task.priority] ?? priorityMeta.normal;
+            const tags = taskTagsByTaskId[task.id] ?? [];
             return (
               <article
                 key={task.id}
                 className="card"
+                style={{ background: priorityBg[task.priority] ?? priorityBg.normal }}
                 onClick={() => onOpenTask(task.id)}
                 draggable
                 onDragStart={(e) => {
@@ -64,9 +67,11 @@ export function BoardView({ columns, tasks, onOpenTask, onMoveTask }: Props) {
                 <div className="card-title">{task.title}</div>
                 <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
                 <div className="badges">
-                  <span className="badge" style={{ background: priority.color }}>
-                    {priority.label}
-                  </span>
+                  {tags.slice(0, 3).map((tag) => (
+                    <span key={tag.id} className="tag-chip" style={{ borderColor: tag.color, color: tag.color }}>
+                      {tag.name}
+                    </span>
+                  ))}
                   {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
                 </div>
               </article>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addChecklistItem,
@@ -22,6 +22,7 @@ import {
   patchTask,
   removeTaskTag,
   restoreTask,
+  type Tag,
 } from './api/tasks';
 import { TopBar } from './components/common/TopBar';
 import { NewTaskModal } from './components/common/NewTaskModal';
@@ -38,6 +39,7 @@ type Page = 'board' | 'today' | 'history' | 'archive' | 'settings';
 export default function App() {
   const [page, setPage] = useState<Page>('board');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [taskTagsByTaskId, setTaskTagsByTaskId] = useState<Record<number, Tag[]>>({});
   const queryClient = useQueryClient();
   const { query, setQuery, activeTaskId, setActiveTaskId } = useUIStore();
 
@@ -73,6 +75,17 @@ export default function App() {
     queryFn: () => fetchTaskTags(activeTaskId!),
     enabled: Boolean(activeTaskId),
   });
+
+  useEffect(() => {
+    const loadTaskTags = async () => {
+      const tasks = tasksQuery.data ?? [];
+      const entries = await Promise.all(
+        tasks.map(async (task) => [task.id, await fetchTaskTags(task.id)] as const),
+      );
+      setTaskTagsByTaskId(Object.fromEntries(entries));
+    };
+    void loadTaskTags();
+  }, [tasksQuery.data]);
 
   const refreshBoardData = async () => {
     await Promise.all([
@@ -168,6 +181,7 @@ export default function App() {
                 await addTaskTag(activeTaskId, tag.id);
                 await refreshBoardData();
               }}
+              taskTagsByTaskId={taskTagsByTaskId}
             />
           </>
         )}

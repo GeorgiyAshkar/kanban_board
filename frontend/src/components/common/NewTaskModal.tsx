@@ -43,14 +43,14 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Введите описание" />
 
           <label>Колонка</label>
-          <select value={columnId} onChange={(e) => setColumnId(Number(e.target.value))}>
+          <select className="select-styled" value={columnId} onChange={(e) => setColumnId(Number(e.target.value))}>
             {columns.map((col) => (
               <option key={col.id} value={col.id}>{col.name}</option>
             ))}
           </select>
 
           <label>Приоритет</label>
-          <select value={priority} onChange={(e) => setPriority(e.target.value as 'low' | 'normal' | 'high' | 'critical')}>
+          <select className="select-styled" value={priority} onChange={(e) => setPriority(e.target.value as 'low' | 'normal' | 'high' | 'critical')}>
             <option value="low">Низкий</option>
             <option value="normal">Обычный</option>
             <option value="high">Высокий</option>

@@ -45,11 +45,12 @@ body { margin: 0; background: #eef2f8; }
 .columns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; height: 100%; min-height: 0; }
 .column { background: #eceff5; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 0; }
 .column h3 { margin: 4px 0 8px; font-size: 32px; }
-.card { background: #fff; border-radius: 10px; padding: 10px; box-shadow: 0 1px 3px rgba(15,23,42,.12); cursor: pointer; }
+.card { border-radius: 10px; padding: 10px; box-shadow: 0 1px 3px rgba(15,23,42,.12); cursor: pointer; }
 .card-title { font-size: 29px; font-weight: 700; margin-bottom: 6px; }
 .muted { color: #64748b; font-size: 24px; }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .badge { border-radius: 8px; padding: 2px 10px; font-size: 22px; color: #fff; }
+.tag-chip { border: 1px solid; border-radius: 999px; font-size: 18px; padding: 2px 8px; background: rgba(255,255,255,0.45); }
 
 .drawer { background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.08); display: grid; grid-template-rows: auto auto auto auto auto auto auto; height: 100%; min-height: 0; overflow: hidden; }
 .drawer-header { padding: 18px 20px 10px; border-bottom: 1px solid #e2e8f0; }
@@ -61,8 +62,21 @@ body { margin: 0; background: #eef2f8; }
 .editor-grid input, .editor-grid textarea, .editor-grid select { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font-size: 22px; }
 .row-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .scroll-block { max-height: 130px; overflow-y: auto; }
+.scroll-block-lg { max-height: 250px; overflow-y: auto; }
 .comment-input { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 20px; }
 .comment-input input { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 24px; }
+.tabs-section { display: grid; gap: 10px; }
+.tabs-head { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tab-btn { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px; padding: 8px; font-size: 17px; cursor: pointer; }
+.tab-btn.active { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+.tab-body { background: #f8fafc; border-radius: 8px; padding: 10px; }
+.select-styled {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 36px 8px 10px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  font-size: 17px;
+}
 
 .history-panel { background: #fff; border-radius: 12px; padding: 16px; }
 .history-panel h3 { margin: 0 0 8px; font-size: 34px; }
@@ -96,6 +110,7 @@ body { margin: 0; background: #eef2f8; }
   border-radius: 8px;
   padding: 10px;
   font-size: 19px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
 }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 

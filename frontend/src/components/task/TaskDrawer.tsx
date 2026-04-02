@@ -36,6 +36,7 @@ export function TaskDrawer({
   onCreateTagAndAdd,
 }: Props) {
   const [commentText, setCommentText] = useState('');
+  const [activeTab, setActiveTab] = useState<'tags' | 'checklist' | 'comments' | 'history'>('tags');
   const [draftTitle, setDraftTitle] = useState(task?.title ?? '');
   const [draftDescription, setDraftDescription] = useState(task?.description ?? '');
   const [draftStatus, setDraftStatus] = useState(task?.status ?? 'inbox');
@@ -72,14 +73,14 @@ export function TaskDrawer({
           <input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="Название" />
           <textarea value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} placeholder="Описание" rows={3} />
           <div className="row-fields">
-            <select value={draftStatus} onChange={(e) => setDraftStatus(e.target.value)}>
+            <select className="select-styled" value={draftStatus} onChange={(e) => setDraftStatus(e.target.value)}>
               <option value="inbox">Входящие</option>
               <option value="todo">К выполнению</option>
               <option value="in_progress">В работе</option>
               <option value="paused">На паузе</option>
               <option value="done">Готово</option>
             </select>
-            <select value={draftPriority} onChange={(e) => setDraftPriority(e.target.value)}>
+            <select className="select-styled" value={draftPriority} onChange={(e) => setDraftPriority(e.target.value)}>
               <option value="low">Низкий</option>
               <option value="normal">Обычный</option>
               <option value="high">Высокий</option>
@@ -97,71 +98,85 @@ export function TaskDrawer({
         </div>
       </section>
 
-      <section className="section">
-        <h4>Теги</h4>
-        <div className="badges">
-          {taskTags.map((tag) => (
-            <button key={tag.id} className="badge" style={{ background: tag.color }} onClick={() => onRemoveTag(tag.id)}>
-              {tag.name} ×
+      <section className="section tabs-section">
+        <div className="tabs-head">
+          <button className={`tab-btn ${activeTab === 'tags' ? 'active' : ''}`} onClick={() => setActiveTab('tags')}>Теги</button>
+          <button className={`tab-btn ${activeTab === 'checklist' ? 'active' : ''}`} onClick={() => setActiveTab('checklist')}>Чек-лист</button>
+          <button className={`tab-btn ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>Комментарии</button>
+          <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>История</button>
+        </div>
+
+        {activeTab === 'tags' && (
+          <div className="tab-body scroll-block-lg">
+            <div className="badges">
+              {taskTags.map((tag) => (
+                <button key={tag.id} className="badge" style={{ background: tag.color }} onClick={() => onRemoveTag(tag.id)}>
+                  {tag.name} ×
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <select
+                className="select-styled"
+                onChange={async (e) => {
+                  const tagId = Number(e.target.value);
+                  if (!tagId) return;
+                  await onAddTag(tagId);
+                  e.currentTarget.value = '';
+                }}
+              >
+                <option value="">Добавить тег...</option>
+                {freeTags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>{tag.name}</option>
+                ))}
+              </select>
+              <button
+                className="small-btn"
+                style={{ marginLeft: 8 }}
+                onClick={async () => {
+                  const name = window.prompt('Название нового тега');
+                  if (!name) return;
+                  await onCreateTagAndAdd(name);
+                }}
+              >
+                + Новый тег
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'checklist' && (
+          <div className="tab-body scroll-block-lg">
+            <ul>
+              {checklist.map((item) => (
+                <li key={item.id}>
+                  <label>
+                    <input type="checkbox" checked={item.is_done} onChange={() => onToggleChecklist(item.id, !item.is_done)} /> {item.title}
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <button className="small-btn" onClick={async () => { const title = window.prompt('Новый пункт чек-листа'); if (title) await onAddChecklist(title); }}>
+              Добавить пункт
             </button>
-          ))}
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <select
-            onChange={async (e) => {
-              const tagId = Number(e.target.value);
-              if (!tagId) return;
-              await onAddTag(tagId);
-              e.currentTarget.value = '';
-            }}
-          >
-            <option value="">Добавить тег...</option>
-            {freeTags.map((tag) => (
-              <option key={tag.id} value={tag.id}>{tag.name}</option>
+          </div>
+        )}
+
+        {activeTab === 'comments' && (
+          <div className="tab-body scroll-block-lg">
+            {comments.map((comment) => (
+              <p key={comment.id}><b>{comment.author}:</b> {comment.text}</p>
             ))}
-          </select>
-          <button
-            className="small-btn"
-            style={{ marginLeft: 8 }}
-            onClick={async () => {
-              const name = window.prompt('Название нового тега');
-              if (!name) return;
-              await onCreateTagAndAdd(name);
-            }}
-          >
-            + Новый тег
-          </button>
-        </div>
-      </section>
+          </div>
+        )}
 
-      <section className="section scroll-block">
-        <h4>Чек-лист</h4>
-        <ul>
-          {checklist.map((item) => (
-            <li key={item.id}>
-              <label>
-                <input type="checkbox" checked={item.is_done} onChange={() => onToggleChecklist(item.id, !item.is_done)} /> {item.title}
-              </label>
-            </li>
-          ))}
-        </ul>
-        <button className="small-btn" onClick={async () => { const title = window.prompt('Новый пункт чек-листа'); if (title) await onAddChecklist(title); }}>
-          Добавить пункт
-        </button>
-      </section>
-
-      <section className="section scroll-block">
-        <h4>Комментарии</h4>
-        {comments.map((comment) => (
-          <p key={comment.id}><b>{comment.author}:</b> {comment.text}</p>
-        ))}
-      </section>
-
-      <section className="section scroll-block">
-        <h4>История задачи</h4>
-        {history.map((item) => (
-          <p key={item.id}>{new Date(item.created_at).toLocaleString()} — {item.action_type}</p>
-        ))}
+        {activeTab === 'history' && (
+          <div className="tab-body scroll-block-lg">
+            {history.map((item) => (
+              <p key={item.id}>{new Date(item.created_at).toLocaleString()} — {item.action_type}</p>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="comment-input">
