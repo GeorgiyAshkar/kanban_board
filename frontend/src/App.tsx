@@ -24,6 +24,7 @@ import {
   restoreTask,
 } from './api/tasks';
 import { TopBar } from './components/common/TopBar';
+import { NewTaskModal } from './components/common/NewTaskModal';
 import { BoardPage } from './pages/BoardPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { TodayPage } from './pages/TodayPage';
@@ -36,6 +37,7 @@ type Page = 'board' | 'today' | 'history' | 'archive' | 'settings';
 
 export default function App() {
   const [page, setPage] = useState<Page>('board');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const queryClient = useQueryClient();
   const { query, setQuery, activeTaskId, setActiveTaskId } = useUIStore();
 
@@ -86,32 +88,26 @@ export default function App() {
     ]);
   };
 
-  const handleCreateTask = async () => {
-    const title = window.prompt('Название задачи');
-    if (!title) return;
-    const status = window.prompt('Статус (inbox/todo/in_progress/paused/done)', 'inbox') ?? 'inbox';
-    const priority = (window.prompt('Приоритет (low/normal/high/critical)', 'normal') ?? 'normal') as
-      | 'low'
-      | 'normal'
-      | 'high'
-      | 'critical';
-    const tags = window.prompt('Теги через запятую (опционально)', '') ?? '';
-
-    const task = await createTaskWithPayload({ title, description: '', status, priority });
-    const tagNames = tags.split(',').map((x) => x.trim()).filter(Boolean);
-    for (const name of tagNames) {
-      let tag = (tagsQuery.data ?? []).find((t) => t.name.toLowerCase() === name.toLowerCase());
-      if (!tag) {
-        tag = await createTag(name);
-      }
-      await addTaskTag(task.id, tag.id);
-    }
-    await refreshBoardData();
-  };
+  const handleCreateTask = () => setIsCreateOpen(true);
 
   return (
     <div className="app-shell">
       <TopBar query={query} onQueryChange={setQuery} setPage={setPage} onCreateTask={handleCreateTask} />
+      <NewTaskModal
+        open={isCreateOpen}
+        columns={columnsQuery.data ?? []}
+        onClose={() => setIsCreateOpen(false)}
+        onSubmit={async ({ title, description, boardColumnId, status, priority }) => {
+          await createTaskWithPayload({
+            title,
+            description,
+            board_column_id: boardColumnId,
+            status,
+            priority,
+          });
+          await refreshBoardData();
+        }}
+      />
 
       <div className="content">
         {page === 'board' && (
