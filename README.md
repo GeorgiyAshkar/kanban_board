@@ -63,6 +63,7 @@ npm run dev
 ### 1) Локальный запуск через Docker Compose
 
 ```bash
+# опционально: cp .env.example .env и задайте свои mirror-образы
 docker compose up --build -d
 ```
 
@@ -76,9 +77,31 @@ docker compose up --build -d
 ./build_and_package_docker.sh
 ```
 
+> Важно: `bash -n build_and_package_docker.sh` проверяет только синтаксис скрипта и **не запускает** сборку.
+
 Скрипт:
 - собирает `kanban-backend:latest` и `kanban-frontend:latest`;
 - упаковывает их в архив `kanban_docker_images_YYYYMMDD_HHMMSS.tar.gz`.
+- поддерживает `--offline` (пропустить build и упаковать уже существующие локальные образы).
+
+#### Если есть ошибка вида `failed to resolve source metadata ... i/o timeout`
+
+Это проблема сети/DNS до Docker Hub на вашей машине (часто `registry-1.docker.io` недоступен).
+
+Варианты решения:
+
+```bash
+# 1) Использовать зеркало/приватный registry:
+export PYTHON_IMAGE=<mirror>/python:3.11-slim
+export NODE_IMAGE=<mirror>/node:20-alpine
+export NGINX_IMAGE=<mirror>/nginx:1.27-alpine
+./build_and_package_docker.sh
+```
+
+```bash
+# 2) Если нужные образы уже есть локально:
+./build_and_package_docker.sh --offline
+```
 
 ### 3) Разворачивание архива на удаленном сервере
 
