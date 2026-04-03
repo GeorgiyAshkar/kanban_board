@@ -25,6 +25,7 @@ interface Props {
   onRemoveTag: (tagId: number) => Promise<void>;
   onCreateTagAndAdd: (name: string) => Promise<void>;
   taskTagsByTaskId: Record<number, Tag[]>;
+  taskChecklistByTaskId: Record<number, ChecklistItem[]>;
   onArchiveTask: () => Promise<void>;
 }
 
@@ -49,6 +50,7 @@ export function BoardPage({
   onRemoveTag,
   onCreateTagAndAdd,
   taskTagsByTaskId,
+  taskChecklistByTaskId,
   onArchiveTask,
 }: Props) {
   const visibleTasks = useMemo(() => {
@@ -61,7 +63,14 @@ export function BoardPage({
 
   return (
     <div className="board-layout">
-      <BoardView columns={columns} tasks={visibleTasks} onOpenTask={setActiveTaskId} onMoveTask={onMoveTask} taskTagsByTaskId={taskTagsByTaskId} />
+      <BoardView
+        columns={columns}
+        tasks={visibleTasks}
+        onOpenTask={setActiveTaskId}
+        onMoveTask={onMoveTask}
+        taskTagsByTaskId={taskTagsByTaskId}
+        taskChecklistByTaskId={taskChecklistByTaskId}
+      />
       <TaskDrawer
         task={activeTask}
         comments={comments}

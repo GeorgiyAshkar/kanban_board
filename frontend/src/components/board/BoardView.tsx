@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { BoardColumn, Task } from '../../types/task';
+import type { BoardColumn, ChecklistItem, Task } from '../../types/task';
 import type { Tag } from '../../api/tasks';
 
 interface Props {
@@ -8,6 +8,7 @@ interface Props {
   onOpenTask: (taskId: number) => void;
   onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
   taskTagsByTaskId: Record<number, Tag[]>;
+  taskChecklistByTaskId: Record<number, ChecklistItem[]>;
 }
 
 const priorityBg: Record<string, string> = {
@@ -17,7 +18,7 @@ const priorityBg: Record<string, string> = {
   critical: 'rgba(239, 68, 68, 0.18)',
 };
 
-export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTaskId }: Props) {
+export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTaskId, taskChecklistByTaskId }: Props) {
   const grouped = useMemo(() => {
     const map = new Map<number, Task[]>();
     for (const col of columns) map.set(col.id, []);
@@ -53,6 +54,8 @@ export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTa
           <h3>{column.name}</h3>
           {(grouped.get(column.id) ?? []).map((task) => {
             const tags = taskTagsByTaskId[task.id] ?? [];
+            const checklist = taskChecklistByTaskId[task.id] ?? [];
+            const checklistDone = checklist.filter((item) => item.is_done).length;
             return (
               <article
                 key={task.id}
@@ -75,6 +78,18 @@ export function BoardView({ columns, tasks, onOpenTask, onMoveTask, taskTagsByTa
                     ))}
                     {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
                   </div>
+                  {checklist.length > 0 && (
+                    <div className="muted" style={{ marginTop: 6 }}>
+                      Чек-лист: {checklistDone}/{checklist.length}
+                      <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                        {checklist.slice(0, 3).map((item) => (
+                          <li key={item.id}>
+                            {item.is_done ? '✅' : '⬜'} {item.title}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </article>
             );

@@ -187,6 +187,19 @@ export function TaskDrawer({
             {comments.map((comment) => (
               <p key={comment.id}><b>{comment.author}:</b> {comment.text}</p>
             ))}
+            <div className="comment-input" style={{ marginTop: 10 }}>
+              <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Добавить комментарий..." />
+              <button
+                className="primary-btn"
+                onClick={async () => {
+                  if (!commentText.trim()) return;
+                  await onAddComment(commentText.trim());
+                  setCommentText('');
+                }}
+              >
+                Отправить
+              </button>
+            </div>
           </div>
         )}
 
@@ -199,12 +212,6 @@ export function TaskDrawer({
         )}
       </section>
 
-      <div className="comment-input">
-        <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Добавить комментарий..." />
-        <button className="primary-btn" onClick={async () => { if (!commentText.trim()) return; await onAddComment(commentText); setCommentText(''); }}>
-          Отправить
-        </button>
-      </div>
     </aside>
   );
 }
