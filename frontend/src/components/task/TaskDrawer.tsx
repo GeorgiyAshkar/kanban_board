@@ -43,6 +43,8 @@ export function TaskDrawer({
   const [draftDescription, setDraftDescription] = useState(task?.description ?? '');
   const [draftStatus, setDraftStatus] = useState(task?.status ?? 'inbox');
   const [draftPriority, setDraftPriority] = useState(task?.priority ?? 'normal');
+  const [draftPlannedReturnAt, setDraftPlannedReturnAt] = useState('');
+  const [draftDeadlineAt, setDraftDeadlineAt] = useState('');
 
   const freeTags = useMemo(() => allTags.filter((tag) => !taskTags.some((tt) => tt.id === tag.id)), [allTags, taskTags]);
 
@@ -52,6 +54,8 @@ export function TaskDrawer({
     setDraftDescription(task.description);
     setDraftStatus(task.status);
     setDraftPriority(task.priority);
+    setDraftPlannedReturnAt(task.planned_return_at ? task.planned_return_at.slice(0, 16) : '');
+    setDraftDeadlineAt(task.deadline_at ? task.deadline_at.slice(0, 16) : '');
   }, [task]);
 
   if (!task) {
@@ -89,10 +93,21 @@ export function TaskDrawer({
               <option value="critical">Критический</option>
             </select>
           </div>
+          <div className="row-fields">
+            <input type="datetime-local" value={draftPlannedReturnAt} onChange={(e) => setDraftPlannedReturnAt(e.target.value)} />
+            <input type="datetime-local" value={draftDeadlineAt} onChange={(e) => setDraftDeadlineAt(e.target.value)} />
+          </div>
           <button
             className="small-btn"
             onClick={async () => {
-              await onSaveTask({ title: draftTitle, description: draftDescription, status: draftStatus, priority: draftPriority as Task['priority'] });
+              await onSaveTask({
+                title: draftTitle,
+                description: draftDescription,
+                status: draftStatus,
+                priority: draftPriority as Task['priority'],
+                planned_return_at: draftPlannedReturnAt ? new Date(draftPlannedReturnAt).toISOString() : null,
+                deadline_at: draftDeadlineAt ? new Date(draftDeadlineAt).toISOString() : null,
+              });
             }}
           >
             Сохранить изменения

@@ -131,13 +131,15 @@ export default function App() {
         open={isCreateOpen}
         columns={columnsQuery.data ?? []}
         onClose={() => setIsCreateOpen(false)}
-        onSubmit={async ({ title, description, boardColumnId, status, priority }) => {
+        onSubmit={async ({ title, description, boardColumnId, status, priority, plannedReturnAt, deadlineAt }) => {
           await createTaskWithPayload({
             title,
             description,
             board_column_id: boardColumnId,
             status,
             priority,
+            planned_return_at: plannedReturnAt,
+            deadline_at: deadlineAt,
           });
           await refreshBoardData();
         }}

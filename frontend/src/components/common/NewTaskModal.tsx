@@ -5,7 +5,15 @@ interface Props {
   open: boolean;
   columns: BoardColumn[];
   onClose: () => void;
-  onSubmit: (payload: { title: string; description: string; boardColumnId: number; status: string; priority: 'low' | 'normal' | 'high' | 'critical' }) => Promise<void>;
+  onSubmit: (payload: {
+    title: string;
+    description: string;
+    boardColumnId: number;
+    status: string;
+    priority: 'low' | 'normal' | 'high' | 'critical';
+    plannedReturnAt: string | null;
+    deadlineAt: string | null;
+  }) => Promise<void>;
 }
 
 export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
@@ -13,6 +21,8 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
   const [description, setDescription] = useState('');
   const [columnId, setColumnId] = useState<number>(columns[0]?.id ?? 0);
   const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'critical'>('normal');
+  const [plannedReturnAt, setPlannedReturnAt] = useState('');
+  const [deadlineAt, setDeadlineAt] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +66,12 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
             <option value="high">Высокий</option>
             <option value="critical">Критический</option>
           </select>
+
+          <label>Начало диапазона</label>
+          <input type="datetime-local" value={plannedReturnAt} onChange={(e) => setPlannedReturnAt(e.target.value)} />
+
+          <label>Конец диапазона</label>
+          <input type="datetime-local" value={deadlineAt} onChange={(e) => setDeadlineAt(e.target.value)} />
         </div>
 
         <div className="modal-actions">
@@ -71,10 +87,14 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
                 boardColumnId: selectedColumn?.id ?? 0,
                 status: mapStatusByColumn(selectedColumn?.name ?? 'Входящие'),
                 priority,
+                plannedReturnAt: plannedReturnAt ? new Date(plannedReturnAt).toISOString() : null,
+                deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : null,
               });
               setTitle('');
               setDescription('');
               setPriority('normal');
+              setPlannedReturnAt('');
+              setDeadlineAt('');
               onClose();
             }}
           >
