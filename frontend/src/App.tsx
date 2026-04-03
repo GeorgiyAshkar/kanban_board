@@ -229,6 +229,10 @@ export default function App() {
               await patchColumn(columnId, { name });
               await refreshBoardData();
             }}
+            onUpdateColumnColor={async (columnId, color) => {
+              await patchColumn(columnId, { color });
+              await refreshBoardData();
+            }}
             onCreateTag={async (name, color) => {
               await createTag(name, color);
               await refreshBoardData();
