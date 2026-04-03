@@ -68,6 +68,7 @@ export function BoardPage({
         tasks={visibleTasks}
         onOpenTask={setActiveTaskId}
         onMoveTask={onMoveTask}
+        onToggleChecklist={onToggleChecklist}
         taskTagsByTaskId={taskTagsByTaskId}
         taskChecklistByTaskId={taskChecklistByTaskId}
       />

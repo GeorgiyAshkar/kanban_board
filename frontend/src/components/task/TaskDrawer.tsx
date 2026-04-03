@@ -183,12 +183,17 @@ export function TaskDrawer({
         )}
 
         {activeTab === 'comments' && (
-          <div className="tab-body">
+          <div className="tab-body comments-tab-body">
             {comments.map((comment) => (
               <p key={comment.id}><b>{comment.author}:</b> {comment.text}</p>
             ))}
             <div className="comment-input" style={{ marginTop: 10 }}>
-              <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Добавить комментарий..." />
+              <textarea
+                className="comment-textarea"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Напишите комментарий..."
+              />
               <button
                 className="primary-btn"
                 onClick={async () => {

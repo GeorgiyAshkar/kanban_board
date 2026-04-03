@@ -106,6 +106,22 @@ body { margin: 0; background: #eef2f8; }
 .scroll-block-lg { max-height: 250px; overflow-y: auto; }
 .comment-input { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 20px; }
 .comment-input input { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 24px; }
+.comment-textarea {
+  width: 100%;
+  min-height: 150px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: var(--font-text);
+  resize: vertical;
+}
+.comments-tab-body .comment-input { grid-template-columns: 1fr; padding: 0; }
+.comments-tab-body .comment-input .primary-btn { justify-self: end; }
+.card-checklist { margin-top: 6px; }
+.card-checklist-list { list-style: none; margin: 4px 0 0; padding: 0; }
+.card-checklist-item { margin: 2px 0; }
+.card-checklist-item label { display: flex; align-items: center; gap: 6px; }
+.card-checklist-item input[type='checkbox'] { cursor: pointer; }
 .tabs-section { display: grid; gap: 10px; }
 .tabs-head { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .tab-btn { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px; padding: 8px; font-size: var(--font-meta); cursor: pointer; }
