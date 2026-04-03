@@ -42,7 +42,7 @@ export function TaskDrawer({
   const [draftTitle, setDraftTitle] = useState(task?.title ?? '');
   const [draftDescription, setDraftDescription] = useState(task?.description ?? '');
   const [draftStatus, setDraftStatus] = useState(task?.status ?? 'inbox');
-  const [draftPriority, setDraftPriority] = useState(task?.priority ?? 'normal');
+  const [draftPriority, setDraftPriority] = useState<Task['priority']>(task?.priority ?? 'normal');
   const [draftPlannedReturnAt, setDraftPlannedReturnAt] = useState('');
   const [draftDeadlineAt, setDraftDeadlineAt] = useState('');
 
@@ -86,7 +86,7 @@ export function TaskDrawer({
               <option value="paused">На паузе</option>
               <option value="done">Готово</option>
             </select>
-            <select className="select-styled" value={draftPriority} onChange={(e) => setDraftPriority(e.target.value)}>
+            <select className="select-styled" value={draftPriority} onChange={(e) => setDraftPriority(e.target.value as Task['priority'])}>
               <option value="low">Низкий</option>
               <option value="normal">Обычный</option>
               <option value="high">Высокий</option>
