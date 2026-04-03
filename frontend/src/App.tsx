@@ -45,6 +45,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('board');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [taskTagsByTaskId, setTaskTagsByTaskId] = useState<Record<number, Tag[]>>({});
+  const [taskChecklistByTaskId, setTaskChecklistByTaskId] = useState<Record<number, Awaited<ReturnType<typeof fetchTaskChecklist>>>>({});
   const queryClient = useQueryClient();
   const { query, setQuery, activeTaskId, setActiveTaskId } = useUIStore();
 
@@ -94,6 +95,21 @@ export default function App() {
       }
     };
     void loadTaskTags();
+  }, [tasksQuery.data]);
+
+  useEffect(() => {
+    const loadTaskChecklist = async () => {
+      try {
+        const tasks = tasksQuery.data ?? [];
+        const entries = await Promise.all(
+          tasks.map(async (task) => [task.id, await fetchTaskChecklist(task.id)] as const),
+        );
+        setTaskChecklistByTaskId(Object.fromEntries(entries));
+      } catch {
+        setTaskChecklistByTaskId({});
+      }
+    };
+    void loadTaskChecklist();
   }, [tasksQuery.data]);
 
   useEffect(() => {
@@ -205,6 +221,7 @@ export default function App() {
                 await refreshBoardData();
               }}
               taskTagsByTaskId={taskTagsByTaskId}
+              taskChecklistByTaskId={taskChecklistByTaskId}
               onArchiveTask={async () => {
                 if (!activeTaskId) return;
                 await archiveTask(activeTaskId);
