@@ -54,8 +54,8 @@ export function TaskDrawer({
     setDraftDescription(task.description);
     setDraftStatus(task.status);
     setDraftPriority(task.priority);
-    setDraftPlannedReturnAt(task.planned_return_at ? task.planned_return_at.slice(0, 16) : '');
-    setDraftDeadlineAt(task.deadline_at ? task.deadline_at.slice(0, 16) : '');
+    setDraftPlannedReturnAt(task.planned_return_at ? task.planned_return_at.slice(0, 10) : '');
+    setDraftDeadlineAt(task.deadline_at ? task.deadline_at.slice(0, 10) : '');
   }, [task]);
 
   if (!task) {
@@ -94,8 +94,8 @@ export function TaskDrawer({
             </select>
           </div>
           <div className="row-fields">
-            <input type="datetime-local" value={draftPlannedReturnAt} onChange={(e) => setDraftPlannedReturnAt(e.target.value)} />
-            <input type="datetime-local" value={draftDeadlineAt} onChange={(e) => setDraftDeadlineAt(e.target.value)} />
+            <input type="date" value={draftPlannedReturnAt} onChange={(e) => setDraftPlannedReturnAt(e.target.value)} />
+            <input type="date" value={draftDeadlineAt} onChange={(e) => setDraftDeadlineAt(e.target.value)} />
           </div>
           <button
             className="small-btn"

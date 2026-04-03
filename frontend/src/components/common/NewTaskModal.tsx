@@ -68,10 +68,10 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
           </select>
 
           <label>Начало диапазона</label>
-          <input type="datetime-local" value={plannedReturnAt} onChange={(e) => setPlannedReturnAt(e.target.value)} />
+          <input type="date" value={plannedReturnAt} onChange={(e) => setPlannedReturnAt(e.target.value)} />
 
           <label>Конец диапазона</label>
-          <input type="datetime-local" value={deadlineAt} onChange={(e) => setDeadlineAt(e.target.value)} />
+          <input type="date" value={deadlineAt} onChange={(e) => setDeadlineAt(e.target.value)} />
         </div>
 
         <div className="modal-actions">
