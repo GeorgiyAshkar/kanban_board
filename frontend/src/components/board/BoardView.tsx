@@ -91,7 +91,7 @@ export function BoardView({
                     <div className="card-checklist">
                       <div className="muted">Чек-лист: {checklistDone}/{checklist.length}</div>
                       <ul className="card-checklist-list">
-                        {checklist.slice(0, 3).map((item) => (
+                        {checklist.map((item) => (
                           <li key={item.id} className="card-checklist-item">
                             <label
                               onClick={(e) => {
