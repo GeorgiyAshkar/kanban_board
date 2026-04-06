@@ -113,6 +113,14 @@ export default function App() {
   }, [tasksQuery.data]);
 
   useEffect(() => {
+    if (!activeTaskId) return;
+    setTaskChecklistByTaskId((prev) => ({
+      ...prev,
+      [activeTaskId]: taskChecklistQuery.data ?? [],
+    }));
+  }, [activeTaskId, taskChecklistQuery.data]);
+
+  useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--font-title-base', fontConfig.font_title);
     root.style.setProperty('--font-column-title-base', fontConfig.font_column_title);
