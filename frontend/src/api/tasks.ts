@@ -105,6 +105,12 @@ export interface Tag {
   color: string;
 }
 
+export interface BoardTaskMetadata {
+  task_id: number;
+  tags: Tag[];
+  checklist: ChecklistItem[];
+}
+
 export const fetchTags = async (): Promise<Tag[]> => {
   const { data } = await api.get<Tag[]>('/tags');
   return data;
@@ -122,6 +128,15 @@ export const patchTag = async (tagId: number, payload: Partial<Tag>): Promise<Ta
 
 export const fetchTaskTags = async (taskId: number): Promise<Tag[]> => {
   const { data } = await api.get<Tag[]>(`/tasks/${taskId}/tags`);
+  return data;
+};
+
+export const fetchBoardMetadata = async (taskIds: number[]): Promise<BoardTaskMetadata[]> => {
+  if (!taskIds.length) return [];
+  const { data } = await api.get<BoardTaskMetadata[]>('/tasks/board-metadata', {
+    params: { task_ids: taskIds },
+    paramsSerializer: { indexes: null },
+  });
   return data;
 };
 

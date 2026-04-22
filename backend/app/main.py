@@ -1,15 +1,23 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import checklist, columns, comments, history, reminders, tags, task_tags, tasks, today
-from app.db.database import Base, SessionLocal, engine
+from app.db.database import SessionLocal
+from app.db.migrations import run_migrations
 from app.models.models import BoardColumn
+
+def _allowed_origins() -> list[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080")
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
 
 app = FastAPI(title="Personal Kanban Board API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,7 +36,7 @@ app.include_router(today.router)
 
 @app.on_event("startup")
 def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    run_migrations()
     db = SessionLocal()
     try:
         defaults = ["Входящие", "К выполнению", "В работе", "На паузе", "Готово"]

@@ -6,6 +6,7 @@
 
 - **Frontend:** React + TypeScript + Vite + Zustand + TanStack Query
 - **Backend:** FastAPI + SQLAlchemy
+- **Migrations:** Alembic (автоматический `upgrade head` при старте backend)
 - **DB:** SQLite (`kanban.db`)
 
 ## Что реализовано по ТЗ
@@ -61,6 +62,12 @@ uvicorn app.main:app --reload
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+Для безопасного CORS задайте allowlist через env:
+
+```bash
+export ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080"
+```
+
 ## Запуск frontend
 
 ```bash
@@ -84,6 +91,8 @@ docker compose up --build -d
 После запуска:
 - frontend: `http://localhost:8080`
 - backend API: `http://localhost:8080/api/...` (через nginx-proxy)
+
+`docker-compose` прокидывает `ALLOWED_ORIGINS` в backend; при необходимости задайте его в `.env`.
 
 ### 2) Сборка и упаковка Docker-образов в tar.gz
 

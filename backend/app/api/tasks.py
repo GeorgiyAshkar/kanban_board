@@ -7,8 +7,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import BoardColumn, Tag, Task, TaskComment, TaskTag
-from app.schemas.schemas import TaskCreate, TaskMove, TaskPatch, TaskRead
+from app.models.models import BoardColumn, Tag, Task, TaskChecklistItem, TaskComment, TaskTag
+from app.schemas.schemas import BoardTaskMetadata, ChecklistItemRead, TagRead, TaskCreate, TaskMove, TaskPatch, TaskRead
 from app.services.history import log_history
 from app.services.tasks import apply_task_patch
 
@@ -28,6 +28,8 @@ def list_tasks(
     archived: bool | None = None,
     status_filter: str | None = Query(default=None, alias="status"),
     priority: str | None = None,
+    limit: int | None = Query(default=None, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
     stmt = select(Task)
@@ -55,7 +57,46 @@ def list_tasks(
             )
         )
 
-    return db.scalars(stmt.order_by(Task.board_column_id, Task.position, Task.id)).all()
+    stmt = stmt.order_by(Task.board_column_id, Task.position, Task.id)
+    if limit is not None:
+        stmt = stmt.limit(limit).offset(offset)
+    return db.scalars(stmt).all()
+
+
+@router.get("/board-metadata", response_model=list[BoardTaskMetadata])
+def board_metadata(
+    task_ids: list[int] = Query(default=[]),
+    db: Session = Depends(get_db),
+):
+    ids = [task_id for task_id in task_ids if task_id > 0]
+    if not ids:
+        return []
+
+    tags_stmt = (
+        select(TaskTag.task_id, Tag)
+        .join(Tag, Tag.id == TaskTag.tag_id)
+        .where(TaskTag.task_id.in_(ids))
+        .order_by(TaskTag.task_id, Tag.name)
+    )
+    checklist_stmt = (
+        select(TaskChecklistItem)
+        .where(TaskChecklistItem.task_id.in_(ids))
+        .order_by(TaskChecklistItem.task_id, TaskChecklistItem.position, TaskChecklistItem.id)
+    )
+
+    tags_by_task: dict[int, list[TagRead]] = {task_id: [] for task_id in ids}
+    checklist_by_task: dict[int, list[ChecklistItemRead]] = {task_id: [] for task_id in ids}
+
+    for task_id, tag in db.execute(tags_stmt).all():
+        tags_by_task.setdefault(task_id, []).append(TagRead.model_validate(tag))
+
+    for item in db.scalars(checklist_stmt).all():
+        checklist_by_task.setdefault(item.task_id, []).append(ChecklistItemRead.model_validate(item))
+
+    return [
+        BoardTaskMetadata(task_id=task_id, tags=tags_by_task.get(task_id, []), checklist=checklist_by_task.get(task_id, []))
+        for task_id in ids
+    ]
 
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)

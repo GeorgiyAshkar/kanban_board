@@ -10,6 +10,7 @@ import {
   createColumn,
   fetchTags,
   fetchTaskTags,
+  fetchBoardMetadata,
   fetchArchivedTasks,
   fetchColumns,
   fetchHistory,
@@ -83,33 +84,18 @@ export default function App() {
   });
 
   useEffect(() => {
-    const loadTaskTags = async () => {
+    const loadBoardMetadata = async () => {
       try {
         const tasks = tasksQuery.data ?? [];
-        const entries = await Promise.all(
-          tasks.map(async (task) => [task.id, await fetchTaskTags(task.id)] as const),
-        );
-        setTaskTagsByTaskId(Object.fromEntries(entries));
+        const metadata = await fetchBoardMetadata(tasks.map((task) => task.id));
+        setTaskTagsByTaskId(Object.fromEntries(metadata.map((item) => [item.task_id, item.tags])));
+        setTaskChecklistByTaskId(Object.fromEntries(metadata.map((item) => [item.task_id, item.checklist])));
       } catch {
         setTaskTagsByTaskId({});
-      }
-    };
-    void loadTaskTags();
-  }, [tasksQuery.data]);
-
-  useEffect(() => {
-    const loadTaskChecklist = async () => {
-      try {
-        const tasks = tasksQuery.data ?? [];
-        const entries = await Promise.all(
-          tasks.map(async (task) => [task.id, await fetchTaskChecklist(task.id)] as const),
-        );
-        setTaskChecklistByTaskId(Object.fromEntries(entries));
-      } catch {
         setTaskChecklistByTaskId({});
       }
     };
-    void loadTaskChecklist();
+    void loadBoardMetadata();
   }, [tasksQuery.data]);
 
   useEffect(() => {

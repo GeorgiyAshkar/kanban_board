@@ -204,3 +204,9 @@ class ChecklistItemRead(BaseModel):
 
 class TaskTagLinkCreate(BaseModel):
     tag_id: int
+
+
+class BoardTaskMetadata(BaseModel):
+    task_id: int
+    tags: list[TagRead]
+    checklist: list[ChecklistItemRead]

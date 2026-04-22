@@ -25,6 +25,8 @@ def global_history(
     action_type: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    limit: int = 100,
+    offset: int = 0,
     db: Session = Depends(get_db),
 ):
     stmt = select(TaskHistory)
@@ -37,5 +39,6 @@ def global_history(
     if date_to:
         stmt = stmt.where(TaskHistory.created_at <= date_to)
 
-    stmt = stmt.order_by(TaskHistory.created_at.desc()).limit(500)
+    safe_limit = max(1, min(limit, 500))
+    stmt = stmt.order_by(TaskHistory.created_at.desc()).limit(safe_limit).offset(max(0, offset))
     return db.scalars(stmt).all()

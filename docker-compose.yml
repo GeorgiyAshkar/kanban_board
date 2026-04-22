@@ -9,6 +9,8 @@ services:
     container_name: kanban_backend
     volumes:
       - ./data/kanban.db:/app/backend/kanban.db
+    environment:
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080}
     expose:
       - "8000"
 
