@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -24,6 +25,14 @@ class TaskPriority(str, Enum):
     NORMAL = "normal"
     HIGH = "high"
     CRITICAL = "critical"
+
+
+class TaskStatus(str, Enum):
+    INBOX = "inbox"
+    TODO = "todo"
+    IN_PROGRESS = "in_progress"
+    PAUSED = "paused"
+    DONE = "done"
 
 
 class ReminderRepeatType(str, Enum):
@@ -40,7 +49,7 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False, index=True)
     description = Column(Text, default="")
-    status = Column(String(64), default="inbox", index=True)
+    status = Column(SAEnum(TaskStatus), default=TaskStatus.INBOX, index=True)
     priority = Column(SAEnum(TaskPriority), default=TaskPriority.NORMAL)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -122,6 +131,7 @@ class Tag(Base):
 
 class TaskTag(Base):
     __tablename__ = "task_tags"
+    __table_args__ = (UniqueConstraint("task_id", "tag_id", name="uq_task_tag"),)
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
@@ -150,6 +160,7 @@ class BoardColumn(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(128), nullable=False, unique=True)
+    system_key = Column(String(64), nullable=True, unique=True)
     position = Column(Integer, default=0, nullable=False)
     color = Column(String(32), default="#e2e8f0")
     is_system = Column(Boolean, default=True, nullable=False)

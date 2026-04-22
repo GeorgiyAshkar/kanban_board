@@ -68,6 +68,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 export ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080"
 ```
 
+Для конфигурации БД (включая перенос на Postgres) используйте:
+
+```bash
+export DATABASE_URL="sqlite:///./kanban.db"
+```
+
 ## Запуск frontend
 
 ```bash
@@ -93,6 +99,7 @@ docker compose up --build -d
 - backend API: `http://localhost:8080/api/...` (через nginx-proxy)
 
 `docker-compose` прокидывает `ALLOWED_ORIGINS` в backend; при необходимости задайте его в `.env`.
+Также прокидывается `DATABASE_URL` для конфигурации подключения к БД.
 
 ### 2) Сборка и упаковка Docker-образов в tar.gz
 

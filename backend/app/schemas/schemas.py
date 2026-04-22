@@ -3,15 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from app.models.models import ReminderRepeatType, TaskPriority
+from app.models.models import ReminderRepeatType, TaskPriority, TaskStatus
 
 
 class TaskBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str = ""
-    status: str = "inbox"
+    status: TaskStatus = TaskStatus.INBOX
     priority: TaskPriority = TaskPriority.NORMAL
     deadline_at: Optional[datetime] = None
     planned_return_at: Optional[datetime] = None
@@ -30,7 +30,7 @@ class TaskCreate(TaskBase):
 class TaskPatch(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     deadline_at: Optional[datetime] = None
     planned_return_at: Optional[datetime] = None
@@ -57,7 +57,7 @@ class TaskRead(TaskBase):
 
 class TaskMove(BaseModel):
     board_column_id: int
-    status: Optional[str] = None
+    status: Optional[TaskStatus] = None
     position: Optional[int] = None
 
 
@@ -130,10 +130,32 @@ class TagCreate(BaseModel):
     name: str
     color: str = "#64748b"
 
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, value: str) -> str:
+        if not value or len(value) not in (4, 7) or not value.startswith("#"):
+            raise ValueError("Color must be a valid hex value like #64748b")
+        hex_part = value[1:]
+        if not all(c in "0123456789abcdefABCDEF" for c in hex_part):
+            raise ValueError("Color must be a valid hex value like #64748b")
+        return value
+
 
 class TagPatch(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if len(value) not in (4, 7) or not value.startswith("#"):
+            raise ValueError("Color must be a valid hex value like #64748b")
+        hex_part = value[1:]
+        if not all(c in "0123456789abcdefABCDEF" for c in hex_part):
+            raise ValueError("Color must be a valid hex value like #64748b")
+        return value
 
 
 class TagRead(BaseModel):
@@ -151,12 +173,14 @@ class ColumnCreate(BaseModel):
     position: int = 0
     color: str = "#e2e8f0"
     is_system: bool = False
+    system_key: Optional[TaskStatus] = None
 
 
 class ColumnPatch(BaseModel):
     name: Optional[str] = None
     position: Optional[int] = None
     color: Optional[str] = None
+    system_key: Optional[TaskStatus] = None
 
 
 class ColumnRead(BaseModel):
@@ -165,6 +189,7 @@ class ColumnRead(BaseModel):
     position: int
     color: str
     is_system: bool
+    system_key: Optional[TaskStatus]
 
     class Config:
         from_attributes = True

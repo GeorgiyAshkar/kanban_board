@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import BoardColumn, Tag, Task, TaskChecklistItem, TaskComment, TaskTag
+from app.models.models import BoardColumn, Tag, Task, TaskChecklistItem, TaskComment, TaskStatus, TaskTag
 from app.schemas.schemas import BoardTaskMetadata, ChecklistItemRead, TagRead, TaskCreate, TaskMove, TaskPatch, TaskRead
 from app.services.history import log_history
 from app.services.tasks import apply_task_patch
@@ -26,7 +26,7 @@ def _get_task_or_404(db: Session, task_id: int) -> Task:
 def list_tasks(
     q: str | None = None,
     archived: bool | None = None,
-    status_filter: str | None = Query(default=None, alias="status"),
+    status_filter: TaskStatus | None = Query(default=None, alias="status"),
     priority: str | None = None,
     limit: int | None = Query(default=None, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -106,7 +106,7 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     task.updated_at = task.created_at
 
     if task.board_column_id is None:
-        inbox = db.scalar(select(BoardColumn).where(BoardColumn.name == "Входящие"))
+        inbox = db.scalar(select(BoardColumn).where(BoardColumn.system_key == TaskStatus.INBOX.value))
         if inbox:
             task.board_column_id = inbox.id
 
@@ -170,7 +170,7 @@ def restore_task(task_id: int, db: Session = Depends(get_db)):
 def complete_task(task_id: int, db: Session = Depends(get_db)):
     task = _get_task_or_404(db, task_id)
 
-    done_column = db.scalar(select(BoardColumn).where(BoardColumn.name == "Готово"))
+    done_column = db.scalar(select(BoardColumn).where(BoardColumn.system_key == TaskStatus.DONE.value))
     if done_column:
         task.board_column_id = done_column.id
         task.status = "done"

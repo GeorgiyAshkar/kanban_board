@@ -171,8 +171,7 @@ export default function App() {
               onMoveTask={async (taskId, columnId, position) => {
                 const statusMap: Record<number, string> = {};
                 (columnsQuery.data ?? []).forEach((col) => {
-                  const name = col.name.toLowerCase();
-                  statusMap[col.id] = name.includes('вход') ? 'inbox' : name.includes('выполн') ? 'todo' : name.includes('работ') ? 'in_progress' : name.includes('пауз') ? 'paused' : name.includes('готов') ? 'done' : 'inbox';
+                  statusMap[col.id] = col.system_key ?? 'inbox';
                 });
                 await moveTask(taskId, columnId, statusMap[columnId], position);
                 await refreshBoardData();

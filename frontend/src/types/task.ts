@@ -1,10 +1,11 @@
 export type TaskPriority = 'low' | 'normal' | 'high' | 'critical';
+export type TaskStatus = 'inbox' | 'todo' | 'in_progress' | 'paused' | 'done';
 
 export interface Task {
   id: number;
   title: string;
   description: string;
-  status: string;
+  status: TaskStatus;
   priority: TaskPriority;
   deadline_at: string | null;
   planned_return_at: string | null;
@@ -20,6 +21,7 @@ export interface Task {
 export interface BoardColumn {
   id: number;
   name: string;
+  system_key: TaskStatus | null;
   position: number;
   color: string;
   is_system: boolean;
