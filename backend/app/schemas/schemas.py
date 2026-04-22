@@ -21,6 +21,12 @@ class TaskBase(BaseModel):
     color_mark: Optional[str] = None
     estimate_minutes: Optional[int] = None
     spent_minutes: Optional[int] = None
+    assignee_last_name: Optional[str] = None
+    assignee_first_name: Optional[str] = None
+    assignee_middle_name: Optional[str] = None
+    assignee_phone: Optional[str] = None
+    assignee_email: Optional[str] = None
+    assignee_org: Optional[str] = None
 
 
 class TaskCreate(TaskBase):
@@ -41,6 +47,12 @@ class TaskPatch(BaseModel):
     estimate_minutes: Optional[int] = None
     spent_minutes: Optional[int] = None
     is_done: Optional[bool] = None
+    assignee_last_name: Optional[str] = None
+    assignee_first_name: Optional[str] = None
+    assignee_middle_name: Optional[str] = None
+    assignee_phone: Optional[str] = None
+    assignee_email: Optional[str] = None
+    assignee_org: Optional[str] = None
 
 
 class TaskRead(TaskBase):

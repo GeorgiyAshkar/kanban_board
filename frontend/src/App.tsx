@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   archiveTask,
   addChecklistItem,
+  deleteChecklistItem,
   addTaskTag,
   addTaskComment,
   createTag,
@@ -204,29 +205,30 @@ export default function App() {
                   throw error;
                 }
               }}
-              onToggleChecklist={async (itemId, isDone) => {
-                if (!activeTaskId) return;
-                const previousChecklist = queryClient.getQueryData(['task-checklist', activeTaskId]) as typeof taskChecklistQuery.data;
+              onToggleChecklist={async (itemId, isDone, taskId) => {
+                const targetTaskId = taskId ?? activeTaskId;
+                if (!targetTaskId) return;
+                const previousChecklist = queryClient.getQueryData(['task-checklist', targetTaskId]) as typeof taskChecklistQuery.data;
                 const applyChecklistPatch = (items: typeof taskChecklistQuery.data) =>
                   (items ?? []).map((item) => (item.id === itemId ? { ...item, is_done: isDone } : item));
 
-                queryClient.setQueryData(['task-checklist', activeTaskId], applyChecklistPatch(previousChecklist));
+                queryClient.setQueryData(['task-checklist', targetTaskId], applyChecklistPatch(previousChecklist));
                 setTaskChecklistByTaskId((prev) => ({
                   ...prev,
-                  [activeTaskId]: applyChecklistPatch(prev[activeTaskId] ?? []),
+                  [targetTaskId]: applyChecklistPatch(prev[targetTaskId] ?? []),
                 }));
 
                 try {
-                  await patchChecklistItem(itemId, isDone);
+                  await patchChecklistItem(itemId, { is_done: isDone });
                   await Promise.all([
                     queryClient.invalidateQueries({ queryKey: ['tasks'] }),
-                    queryClient.invalidateQueries({ queryKey: ['task-history', activeTaskId] }),
+                    queryClient.invalidateQueries({ queryKey: ['task-history', targetTaskId] }),
                   ]);
                 } catch (error) {
-                  queryClient.setQueryData(['task-checklist', activeTaskId], previousChecklist ?? []);
+                  queryClient.setQueryData(['task-checklist', targetTaskId], previousChecklist ?? []);
                   setTaskChecklistByTaskId((prev) => ({
                     ...prev,
-                    [activeTaskId]: previousChecklist ?? [],
+                    [targetTaskId]: previousChecklist ?? [],
                   }));
                   throw error;
                 }
@@ -260,6 +262,49 @@ export default function App() {
                     queryClient.invalidateQueries({ queryKey: ['tasks'] }),
                     queryClient.invalidateQueries({ queryKey: ['task-history', activeTaskId] }),
                   ]);
+                } catch (error) {
+                  queryClient.setQueryData(['task-checklist', activeTaskId], previousChecklist ?? []);
+                  setTaskChecklistByTaskId((prev) => ({
+                    ...prev,
+                    [activeTaskId]: previousChecklist ?? [],
+                  }));
+                  throw error;
+                }
+              }}
+              onEditChecklist={async (itemId, title) => {
+                if (!activeTaskId) return;
+                const previousChecklist = queryClient.getQueryData(['task-checklist', activeTaskId]) as typeof taskChecklistQuery.data;
+                const applyChecklistPatch = (items: typeof taskChecklistQuery.data) =>
+                  (items ?? []).map((item) => (item.id === itemId ? { ...item, title } : item));
+                queryClient.setQueryData(['task-checklist', activeTaskId], applyChecklistPatch(previousChecklist));
+                setTaskChecklistByTaskId((prev) => ({
+                  ...prev,
+                  [activeTaskId]: applyChecklistPatch(prev[activeTaskId] ?? []),
+                }));
+                try {
+                  await patchChecklistItem(itemId, { title });
+                  await queryClient.invalidateQueries({ queryKey: ['task-history', activeTaskId] });
+                } catch (error) {
+                  queryClient.setQueryData(['task-checklist', activeTaskId], previousChecklist ?? []);
+                  setTaskChecklistByTaskId((prev) => ({
+                    ...prev,
+                    [activeTaskId]: previousChecklist ?? [],
+                  }));
+                  throw error;
+                }
+              }}
+              onDeleteChecklist={async (itemId) => {
+                if (!activeTaskId) return;
+                const previousChecklist = queryClient.getQueryData(['task-checklist', activeTaskId]) as typeof taskChecklistQuery.data;
+                const nextChecklist = (previousChecklist ?? []).filter((item) => item.id !== itemId);
+                queryClient.setQueryData(['task-checklist', activeTaskId], nextChecklist);
+                setTaskChecklistByTaskId((prev) => ({
+                  ...prev,
+                  [activeTaskId]: (prev[activeTaskId] ?? []).filter((item) => item.id !== itemId),
+                }));
+                try {
+                  await deleteChecklistItem(itemId);
+                  await queryClient.invalidateQueries({ queryKey: ['task-history', activeTaskId] });
                 } catch (error) {
                   queryClient.setQueryData(['task-checklist', activeTaskId], previousChecklist ?? []);
                   setTaskChecklistByTaskId((prev) => ({

@@ -11,8 +11,10 @@ interface Props {
   taskTags: Tag[];
   allTags: Tag[];
   onAddComment: (text: string) => Promise<void>;
-  onToggleChecklist: (itemId: number, isDone: boolean) => Promise<void>;
+  onToggleChecklist: (itemId: number, isDone: boolean, taskId?: number) => Promise<void>;
   onAddChecklist: (title: string) => Promise<void>;
+  onEditChecklist: (itemId: number, title: string) => Promise<void>;
+  onDeleteChecklist: (itemId: number) => Promise<void>;
   onSaveTask: (patch: Partial<Task>) => Promise<void>;
   onAddTag: (tagId: number) => Promise<void>;
   onRemoveTag: (tagId: number) => Promise<void>;
@@ -31,6 +33,8 @@ export function TaskDrawer({
   onAddComment,
   onToggleChecklist,
   onAddChecklist,
+  onEditChecklist,
+  onDeleteChecklist,
   onSaveTask,
   onAddTag,
   onRemoveTag,
@@ -46,6 +50,12 @@ export function TaskDrawer({
   const [draftPriority, setDraftPriority] = useState<Task['priority']>(task?.priority ?? 'normal');
   const [draftPlannedReturnAt, setDraftPlannedReturnAt] = useState('');
   const [draftDeadlineAt, setDraftDeadlineAt] = useState('');
+  const [assigneeLastName, setAssigneeLastName] = useState('');
+  const [assigneeFirstName, setAssigneeFirstName] = useState('');
+  const [assigneeMiddleName, setAssigneeMiddleName] = useState('');
+  const [assigneePhone, setAssigneePhone] = useState('');
+  const [assigneeEmail, setAssigneeEmail] = useState('');
+  const [assigneeOrg, setAssigneeOrg] = useState('');
 
   const freeTags = useMemo(() => allTags.filter((tag) => !taskTags.some((tt) => tt.id === tag.id)), [allTags, taskTags]);
 
@@ -57,6 +67,12 @@ export function TaskDrawer({
     setDraftPriority(task.priority);
     setDraftPlannedReturnAt(task.planned_return_at ? task.planned_return_at.slice(0, 10) : '');
     setDraftDeadlineAt(task.deadline_at ? task.deadline_at.slice(0, 10) : '');
+    setAssigneeLastName(task.assignee_last_name ?? '');
+    setAssigneeFirstName(task.assignee_first_name ?? '');
+    setAssigneeMiddleName(task.assignee_middle_name ?? '');
+    setAssigneePhone(task.assignee_phone ?? '');
+    setAssigneeEmail(task.assignee_email ?? '');
+    setAssigneeOrg(task.assignee_org ?? '');
   }, [task]);
 
   if (!task) {
@@ -98,6 +114,17 @@ export function TaskDrawer({
             <input type="date" value={draftPlannedReturnAt} onChange={(e) => setDraftPlannedReturnAt(e.target.value)} />
             <input type="date" value={draftDeadlineAt} onChange={(e) => setDraftDeadlineAt(e.target.value)} />
           </div>
+          <h4 style={{ margin: '8px 0 0' }}>Исполнитель</h4>
+          <div className="row-fields">
+            <input value={assigneeLastName} onChange={(e) => setAssigneeLastName(e.target.value)} placeholder="Фамилия" />
+            <input value={assigneeFirstName} onChange={(e) => setAssigneeFirstName(e.target.value)} placeholder="Имя" />
+          </div>
+          <input value={assigneeMiddleName} onChange={(e) => setAssigneeMiddleName(e.target.value)} placeholder="Отчество" />
+          <div className="row-fields">
+            <input value={assigneePhone} onChange={(e) => setAssigneePhone(e.target.value)} placeholder="Мобильный телефон" />
+            <input value={assigneeEmail} onChange={(e) => setAssigneeEmail(e.target.value)} placeholder="Email" />
+          </div>
+          <input value={assigneeOrg} onChange={(e) => setAssigneeOrg(e.target.value)} placeholder="Организация" />
           <button
             className="small-btn"
             onClick={async () => {
@@ -108,6 +135,12 @@ export function TaskDrawer({
                 priority: draftPriority as Task['priority'],
                 planned_return_at: draftPlannedReturnAt ? new Date(draftPlannedReturnAt).toISOString() : null,
                 deadline_at: draftDeadlineAt ? new Date(draftDeadlineAt).toISOString() : null,
+                assignee_last_name: assigneeLastName || null,
+                assignee_first_name: assigneeFirstName || null,
+                assignee_middle_name: assigneeMiddleName || null,
+                assignee_phone: assigneePhone || null,
+                assignee_email: assigneeEmail || null,
+                assignee_org: assigneeOrg || null,
               });
             }}
           >
@@ -174,6 +207,21 @@ export function TaskDrawer({
                   <label>
                     <input type="checkbox" checked={item.is_done} onChange={() => onToggleChecklist(item.id, !item.is_done)} /> {item.title}
                   </label>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    <button
+                      className="small-btn"
+                      onClick={async () => {
+                        const nextTitle = window.prompt('Новое название пункта', item.title);
+                        if (!nextTitle || !nextTitle.trim()) return;
+                        await onEditChecklist(item.id, nextTitle.trim());
+                      }}
+                    >
+                      Редактировать
+                    </button>
+                    <button className="small-btn" onClick={() => onDeleteChecklist(item.id)}>
+                      Удалить
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

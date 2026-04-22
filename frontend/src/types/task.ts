@@ -15,6 +15,12 @@ export interface Task {
   done_at: string | null;
   board_column_id: number | null;
   position: number;
+  assignee_last_name?: string | null;
+  assignee_first_name?: string | null;
+  assignee_middle_name?: string | null;
+  assignee_phone?: string | null;
+  assignee_email?: string | null;
+  assignee_org?: string | null;
 }
 
 export interface BoardColumn {
@@ -68,4 +74,6 @@ export interface ChecklistItem {
   title: string;
   position: number;
   is_done: boolean;
+  done_at?: string | null;
+  created_at?: string;
 }

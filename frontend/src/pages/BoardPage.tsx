@@ -15,8 +15,10 @@ interface Props {
   checklist: ChecklistItem[];
   taskHistory: HistoryItem[];
   onAddComment: (text: string) => Promise<void>;
-  onToggleChecklist: (itemId: number, isDone: boolean) => Promise<void>;
+  onToggleChecklist: (itemId: number, isDone: boolean, taskId?: number) => Promise<void>;
   onAddChecklist: (title: string) => Promise<void>;
+  onEditChecklist: (itemId: number, title: string) => Promise<void>;
+  onDeleteChecklist: (itemId: number) => Promise<void>;
   onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
   onSaveTask: (patch: Partial<Task>) => Promise<void>;
   taskTags: Tag[];
@@ -42,6 +44,8 @@ export function BoardPage({
   onAddComment,
   onToggleChecklist,
   onAddChecklist,
+  onEditChecklist,
+  onDeleteChecklist,
   onMoveTask,
   onSaveTask,
   taskTags,
@@ -81,6 +85,8 @@ export function BoardPage({
         onAddComment={onAddComment}
         onToggleChecklist={onToggleChecklist}
         onAddChecklist={onAddChecklist}
+        onEditChecklist={onEditChecklist}
+        onDeleteChecklist={onDeleteChecklist}
         onSaveTask={onSaveTask}
         taskTags={taskTags}
         allTags={allTags}

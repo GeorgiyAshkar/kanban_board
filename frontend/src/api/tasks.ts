@@ -74,14 +74,21 @@ export const fetchTaskChecklist = async (taskId: number): Promise<ChecklistItem[
   return data;
 };
 
-export const patchChecklistItem = async (itemId: number, is_done: boolean): Promise<ChecklistItem> => {
-  const { data } = await api.patch<ChecklistItem>(`/checklist/${itemId}`, { is_done });
+export const patchChecklistItem = async (
+  itemId: number,
+  payload: Partial<Pick<ChecklistItem, 'is_done' | 'title' | 'position'>>,
+): Promise<ChecklistItem> => {
+  const { data } = await api.patch<ChecklistItem>(`/checklist/${itemId}`, payload);
   return data;
 };
 
 export const addChecklistItem = async (taskId: number, title: string): Promise<ChecklistItem> => {
   const { data } = await api.post<ChecklistItem>(`/tasks/${taskId}/checklist`, { title });
   return data;
+};
+
+export const deleteChecklistItem = async (itemId: number): Promise<void> => {
+  await api.delete(`/checklist/${itemId}`);
 };
 
 export const fetchToday = async (): Promise<TodayResponse> => {

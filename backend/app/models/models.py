@@ -55,6 +55,12 @@ class Task(Base):
     color_mark = Column(String(32), nullable=True)
     estimate_minutes = Column(Integer, nullable=True)
     spent_minutes = Column(Integer, nullable=True)
+    assignee_last_name = Column(String(128), nullable=True)
+    assignee_first_name = Column(String(128), nullable=True)
+    assignee_middle_name = Column(String(128), nullable=True)
+    assignee_phone = Column(String(64), nullable=True)
+    assignee_email = Column(String(255), nullable=True)
+    assignee_org = Column(String(255), nullable=True)
 
     history = relationship("TaskHistory", back_populates="task", cascade="all, delete-orphan")
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")

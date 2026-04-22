@@ -77,13 +77,14 @@ body { margin: 0; background: #eef2f8; overflow-x: hidden; -webkit-text-size-adj
   z-index: 2;
 }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-head-right { display: flex; align-items: center; gap: 6px; }
 .card-title-btn {
   border: none;
   background: transparent;
   text-align: left;
   padding: 0;
   margin: 0;
-  font-size: var(--font-card-title);
+  font-size: calc(var(--font-card-title) - 2pt);
   font-weight: 700;
   cursor: pointer;
   color: #0f172a;
@@ -226,7 +227,6 @@ body { margin: 0; background: #eef2f8; overflow-x: hidden; -webkit-text-size-adj
   .column { scroll-snap-align: start; max-height: 58dvh; }
   .content { padding: 12px; }
   .topbar { gap: 10px; }
-  .card-details { opacity: 1; max-height: none; overflow: visible; }
 }
 
 @media (max-width: 720px) {
