@@ -78,8 +78,13 @@ npm run dev
 
 Для повторяемых сборок в CI/контейнере рекомендуется использовать `npm ci` при наличии `package-lock.json`.
 
-`Vite` dev-server настроен с proxy `/api -> http://localhost:8000`, поэтому frontend в dev-режиме корректно ходит в backend без CORS-проблем.
+`Vite` dev-server настроен с proxy `/api -> VITE_API_PROXY_TARGET` (по умолчанию `http://127.0.0.1:8000`), поэтому frontend в dev-режиме корректно ходит в backend без CORS-проблем.
 `Vite` также запущен с `host: 0.0.0.0`, поэтому приложение доступно по внешнему IP вашей машины: `http://<YOUR_LAN_IP>:5173`.
+
+Если видите ошибку `ECONNREFUSED 127.0.0.1:8000`, значит backend недоступен по адресу прокси:
+- запустите backend локально (`uvicorn ... --host 0.0.0.0 --port 8000`), или
+- поднимите backend через `docker compose up -d backend` (в compose добавлен проброс порта `8000:8000`), или
+- задайте `VITE_API_PROXY_TARGET` на нужный адрес API.
 
 ## Docker запуск
 
