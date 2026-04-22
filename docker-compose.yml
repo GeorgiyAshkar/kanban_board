@@ -1,0 +1,29 @@
+services:
+  backend:
+    image: kanban-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+    container_name: kanban_backend
+    volumes:
+      - ./data/kanban.db:/app/backend/kanban.db
+    environment:
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080}
+    expose:
+      - "8000"
+
+  frontend:
+    image: kanban-frontend:latest
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:20-alpine}
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
+    container_name: kanban_frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
