@@ -105,10 +105,18 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     task.created_at = datetime.utcnow()
     task.updated_at = task.created_at
 
+    selected_column: BoardColumn | None = None
+    if task.board_column_id is not None:
+        selected_column = db.get(BoardColumn, task.board_column_id)
+
     if task.board_column_id is None:
         inbox = db.scalar(select(BoardColumn).where(BoardColumn.name == "Входящие"))
         if inbox:
             task.board_column_id = inbox.id
+            selected_column = inbox
+
+    if selected_column and ("status" not in payload.model_fields_set or not task.status):
+        task.status = selected_column.canonical_status
 
     db.add(task)
     db.flush()
@@ -173,7 +181,7 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
     done_column = db.scalar(select(BoardColumn).where(BoardColumn.name == "Готово"))
     if done_column:
         task.board_column_id = done_column.id
-        task.status = "done"
+        task.status = done_column.canonical_status
 
     task.is_done = True
     task.done_at = datetime.utcnow()
@@ -187,6 +195,9 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
 @router.post("/{task_id}/move", response_model=TaskRead)
 def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db)):
     task = _get_task_or_404(db, task_id)
+    target_column = db.get(BoardColumn, payload.board_column_id)
+    if not target_column:
+        raise HTTPException(status_code=404, detail="Column not found")
 
     old_column_id = task.board_column_id
     old_status = task.status
@@ -194,8 +205,7 @@ def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db)):
     task.board_column_id = payload.board_column_id
     if payload.position is not None:
         task.position = payload.position
-    if payload.status is not None:
-        task.status = payload.status
+    task.status = target_column.canonical_status
 
     task.updated_at = datetime.utcnow()
 

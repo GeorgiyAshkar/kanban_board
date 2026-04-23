@@ -31,16 +31,6 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
 
   if (!open) return null;
 
-  const mapStatusByColumn = (columnName: string) => {
-    const name = columnName.toLowerCase();
-    if (name.includes('вход')) return 'inbox';
-    if (name.includes('выполн')) return 'todo';
-    if (name.includes('работ')) return 'in_progress';
-    if (name.includes('пауз')) return 'paused';
-    if (name.includes('готов')) return 'done';
-    return 'inbox';
-  };
-
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -85,7 +75,7 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
                 title: title.trim(),
                 description: description.trim(),
                 boardColumnId: selectedColumn?.id ?? 0,
-                status: mapStatusByColumn(selectedColumn?.name ?? 'Входящие'),
+                status: selectedColumn?.canonical_status ?? 'inbox',
                 priority,
                 plannedReturnAt: plannedReturnAt ? new Date(plannedReturnAt).toISOString() : null,
                 deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : null,

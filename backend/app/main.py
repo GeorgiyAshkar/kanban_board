@@ -39,11 +39,19 @@ def on_startup() -> None:
     run_migrations()
     db = SessionLocal()
     try:
-        defaults = ["Входящие", "К выполнению", "В работе", "На паузе", "Готово"]
-        for pos, name in enumerate(defaults):
+        defaults = [
+            ("Входящие", "inbox"),
+            ("К выполнению", "todo"),
+            ("В работе", "in_progress"),
+            ("На паузе", "paused"),
+            ("Готово", "done"),
+        ]
+        for pos, (name, canonical_status) in enumerate(defaults):
             exists = db.query(BoardColumn).filter(BoardColumn.name == name).first()
             if not exists:
-                db.add(BoardColumn(name=name, position=pos, is_system=True))
+                db.add(BoardColumn(name=name, canonical_status=canonical_status, position=pos, is_system=True))
+            elif exists.canonical_status != canonical_status:
+                exists.canonical_status = canonical_status
         db.commit()
     finally:
         db.close()

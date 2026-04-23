@@ -26,6 +26,7 @@ export interface Task {
 export interface BoardColumn {
   id: number;
   name: string;
+  canonical_status: string;
   position: number;
   color: string;
   is_system: boolean;

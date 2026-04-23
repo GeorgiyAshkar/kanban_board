@@ -69,7 +69,6 @@ class TaskRead(TaskBase):
 
 class TaskMove(BaseModel):
     board_column_id: int
-    status: Optional[str] = None
     position: Optional[int] = None
 
 
@@ -160,6 +159,7 @@ class TagRead(BaseModel):
 
 class ColumnCreate(BaseModel):
     name: str
+    canonical_status: str = "inbox"
     position: int = 0
     color: str = "#e2e8f0"
     is_system: bool = False
@@ -167,6 +167,7 @@ class ColumnCreate(BaseModel):
 
 class ColumnPatch(BaseModel):
     name: Optional[str] = None
+    canonical_status: Optional[str] = None
     position: Optional[int] = None
     color: Optional[str] = None
 
@@ -174,6 +175,7 @@ class ColumnPatch(BaseModel):
 class ColumnRead(BaseModel):
     id: int
     name: str
+    canonical_status: str
     position: int
     color: str
     is_system: bool
