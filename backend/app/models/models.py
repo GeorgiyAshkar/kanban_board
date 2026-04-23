@@ -115,6 +115,30 @@ class TaskReminder(Base):
     task = relationship("Task", back_populates="reminders")
 
 
+class ReminderNotificationStatus(str, Enum):
+    QUEUED = "queued"
+    DISPATCHED = "dispatched"
+    ACKNOWLEDGED = "acknowledged"
+    FAILED = "failed"
+
+
+class ReminderNotification(Base):
+    __tablename__ = "reminder_notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reminder_id = Column(Integer, ForeignKey("task_reminders.id"), nullable=False, index=True, unique=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    body = Column(Text, nullable=True)
+    status = Column(SAEnum(ReminderNotificationStatus), default=ReminderNotificationStatus.QUEUED, nullable=False, index=True)
+    available_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    dispatched_at = Column(DateTime, nullable=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    attempts = Column(Integer, default=0, nullable=False)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class Tag(Base):
     __tablename__ = "tags"
 

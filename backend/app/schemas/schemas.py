@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from app.models.models import ReminderRepeatType, TaskPriority
+from app.models.models import ReminderNotificationStatus, ReminderRepeatType, TaskPriority
 
 
 class TaskBase(BaseModel):
@@ -224,3 +224,34 @@ class BoardTaskMetadata(BaseModel):
     task_id: int
     tags: list[TagRead]
     checklist: list[ChecklistItemRead]
+
+
+class TaskDetailsResponse(BaseModel):
+    comments: list[CommentRead]
+    reminders: list[ReminderRead]
+    checklist: list[ChecklistItemRead]
+    history: list[HistoryRead]
+    tags: list[TagRead]
+
+
+class BoardResponse(BaseModel):
+    tasks: list[TaskRead]
+    columns: list[ColumnRead]
+    metadata: list[BoardTaskMetadata]
+    total: int
+    limit: int
+    offset: int
+
+
+class ReminderNotificationRead(BaseModel):
+    id: int
+    reminder_id: int
+    task_id: int
+    title: str
+    body: Optional[str] = None
+    status: ReminderNotificationStatus
+    created_at: datetime
+    dispatched_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

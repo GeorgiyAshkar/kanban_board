@@ -3,12 +3,25 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import BoardColumn, Tag, Task, TaskChecklistItem, TaskComment, TaskTag
-from app.schemas.schemas import BoardTaskMetadata, ChecklistItemRead, TagRead, TaskCreate, TaskMove, TaskPatch, TaskRead
+from app.models.models import BoardColumn, Tag, Task, TaskChecklistItem, TaskComment, TaskHistory, TaskReminder, TaskTag
+from app.schemas.schemas import (
+    BoardResponse,
+    BoardTaskMetadata,
+    ChecklistItemRead,
+    CommentRead,
+    HistoryRead,
+    ReminderRead,
+    TagRead,
+    TaskCreate,
+    TaskDetailsResponse,
+    TaskMove,
+    TaskPatch,
+    TaskRead,
+)
 from app.services.history import log_history
 from app.services.tasks import apply_task_patch
 
@@ -22,25 +35,28 @@ def _get_task_or_404(db: Session, task_id: int) -> Task:
     return task
 
 
-@router.get("", response_model=list[TaskRead])
-def list_tasks(
-    q: str | None = None,
-    archived: bool | None = None,
-    status_filter: str | None = Query(default=None, alias="status"),
-    priority: str | None = None,
-    limit: int | None = Query(default=None, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
+DEFAULT_PAGE_SIZE = 50
+
+
+def _build_task_filters(
+    stmt,
+    *,
+    archived: bool | None,
+    status_filter: str | None,
+    priority: str | None,
+    board_column_id: int | None,
+    q: str | None,
 ):
-    stmt = select(Task)
     if archived is not None:
         stmt = stmt.where(Task.is_archived == archived)
     if status_filter:
         stmt = stmt.where(Task.status == status_filter)
     if priority:
         stmt = stmt.where(Task.priority == priority)
+    if board_column_id is not None:
+        stmt = stmt.where(Task.board_column_id == board_column_id)
     if q:
-        like = f"%{q}%"
+        like = f"%{q.strip()}%"
         tag_subquery = (
             select(TaskTag.task_id)
             .join(Tag, Tag.id == TaskTag.tag_id)
@@ -56,11 +72,59 @@ def list_tasks(
                 Task.id.in_(select(comment_subquery.c.task_id)),
             )
         )
+    return stmt
 
+
+@router.get("", response_model=list[TaskRead])
+def list_tasks(
+    q: str | None = None,
+    archived: bool | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    priority: str | None = None,
+    board_column_id: int | None = None,
+    limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Task)
+    stmt = _build_task_filters(
+        stmt,
+        archived=archived,
+        status_filter=status_filter,
+        priority=priority,
+        board_column_id=board_column_id,
+        q=q,
+    )
     stmt = stmt.order_by(Task.board_column_id, Task.position, Task.id)
-    if limit is not None:
-        stmt = stmt.limit(limit).offset(offset)
+    stmt = stmt.limit(limit).offset(offset)
     return db.scalars(stmt).all()
+
+
+@router.get("/board", response_model=BoardResponse)
+def board_view(
+    q: str | None = None,
+    archived: bool | None = False,
+    status_filter: str | None = Query(default=None, alias="status"),
+    priority: str | None = None,
+    board_column_id: int | None = None,
+    limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    base_stmt = _build_task_filters(
+        select(Task),
+        archived=archived,
+        status_filter=status_filter,
+        priority=priority,
+        board_column_id=board_column_id,
+        q=q,
+    )
+    total = db.scalar(select(func.count()).select_from(base_stmt.subquery())) or 0
+    tasks = db.scalars(base_stmt.order_by(Task.board_column_id, Task.position, Task.id).limit(limit).offset(offset)).all()
+    task_ids = [task.id for task in tasks]
+    metadata = board_metadata(task_ids=task_ids, db=db)
+    columns = db.scalars(select(BoardColumn).order_by(BoardColumn.position, BoardColumn.id)).all()
+    return BoardResponse(tasks=tasks, columns=columns, metadata=metadata, total=total, limit=limit, offset=offset)
 
 
 @router.get("/board-metadata", response_model=list[BoardTaskMetadata])
@@ -129,6 +193,31 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
 @router.get("/{task_id}", response_model=TaskRead)
 def get_task(task_id: int, db: Session = Depends(get_db)):
     return _get_task_or_404(db, task_id)
+
+
+@router.get("/{task_id}/details", response_model=TaskDetailsResponse)
+def get_task_details(task_id: int, db: Session = Depends(get_db)):
+    _get_task_or_404(db, task_id)
+    comments = db.scalars(select(TaskComment).where(TaskComment.task_id == task_id).order_by(TaskComment.created_at, TaskComment.id)).all()
+    reminders = db.scalars(select(TaskReminder).where(TaskReminder.task_id == task_id).order_by(TaskReminder.remind_at, TaskReminder.id)).all()
+    checklist = db.scalars(
+        select(TaskChecklistItem).where(TaskChecklistItem.task_id == task_id).order_by(TaskChecklistItem.position, TaskChecklistItem.id)
+    ).all()
+    history = db.scalars(select(TaskHistory).where(TaskHistory.task_id == task_id).order_by(TaskHistory.created_at.desc(), TaskHistory.id.desc())).all()
+    tags_stmt = (
+        select(Tag)
+        .join(TaskTag, TaskTag.tag_id == Tag.id)
+        .where(TaskTag.task_id == task_id)
+        .order_by(Tag.name, Tag.id)
+    )
+    tags = db.scalars(tags_stmt).all()
+    return TaskDetailsResponse(
+        comments=[CommentRead.model_validate(item) for item in comments],
+        reminders=[ReminderRead.model_validate(item) for item in reminders],
+        checklist=[ChecklistItemRead.model_validate(item) for item in checklist],
+        history=[HistoryRead.model_validate(item) for item in history],
+        tags=[TagRead.model_validate(item) for item in tags],
+    )
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
