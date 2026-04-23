@@ -21,6 +21,7 @@ export interface Task {
   assignee_phone?: string | null;
   assignee_email?: string | null;
   assignee_org?: string | null;
+  emoji?: string | null;
 }
 
 export interface BoardColumn {

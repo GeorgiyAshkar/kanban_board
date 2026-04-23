@@ -9,8 +9,36 @@ import type {
   TodayResponse,
 } from '../types/task';
 
+export interface PaginatedBoardResponse {
+  tasks: Task[];
+  columns: BoardColumn[];
+  metadata: BoardTaskMetadata[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface TaskDetailsResponse {
+  comments: TaskComment[];
+  reminders: TaskReminder[];
+  checklist: ChecklistItem[];
+  history: HistoryItem[];
+  tags: Tag[];
+}
+
+export interface ReminderNotificationEvent {
+  id: number;
+  reminder_id: number;
+  task_id: number;
+  title: string;
+  body?: string;
+  status: 'queued' | 'dispatched' | 'acknowledged' | 'failed';
+  created_at: string;
+  dispatched_at?: string | null;
+}
+
 export const fetchTasks = async (): Promise<Task[]> => {
-  const { data } = await api.get<Task[]>('/tasks?archived=false');
+  const { data } = await api.get<Task[]>('/tasks?archived=false&limit=200');
   return data;
 };
 
@@ -144,6 +172,28 @@ export const fetchBoardMetadata = async (taskIds: number[]): Promise<BoardTaskMe
     params: { task_ids: taskIds },
     paramsSerializer: { indexes: null },
   });
+  return data;
+};
+
+export const fetchBoardData = async (query?: string): Promise<PaginatedBoardResponse> => {
+  const { data } = await api.get<PaginatedBoardResponse>('/tasks/board', {
+    params: { archived: false, q: query || undefined, limit: 200, offset: 0 },
+  });
+  return data;
+};
+
+export const fetchTaskDetails = async (taskId: number): Promise<TaskDetailsResponse> => {
+  const { data } = await api.get<TaskDetailsResponse>(`/tasks/${taskId}/details`);
+  return data;
+};
+
+export const pullReminderNotificationEvents = async (afterId = 0): Promise<ReminderNotificationEvent[]> => {
+  const { data } = await api.get<ReminderNotificationEvent[]>('/notifications/events', { params: { after_id: afterId, limit: 20 } });
+  return data;
+};
+
+export const ackReminderNotificationEvent = async (notificationId: number): Promise<ReminderNotificationEvent> => {
+  const { data } = await api.post<ReminderNotificationEvent>(`/notifications/events/${notificationId}/ack`);
   return data;
 };
 

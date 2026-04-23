@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { BoardColumn, ChecklistItem, Task } from '../../types/task';
 import type { Tag } from '../../api/tasks';
+import emojiConfig from '../../emoji_config.json';
 
 interface Props {
   columns: BoardColumn[];
@@ -66,14 +67,20 @@ export function BoardView({
             const tags = taskTagsByTaskId[task.id] ?? [];
             const checklist = taskChecklistByTaskId[task.id] ?? [];
             const checklistDone = checklist.filter((item) => item.is_done).length;
+            const emojiHint = task.emoji ? emojiConfig[task.emoji as keyof typeof emojiConfig] : undefined;
             return (
               <article
                 key={task.id}
                 className={`card ${expandedTaskId === task.id ? 'expanded' : ''}`}
                 style={{ background: priorityBg[task.priority] ?? priorityBg.normal }}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('taskId', String(task.id));
+                onClick={() => onOpenTask(task.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onOpenTask(task.id);
+                  }
                 }}
               >
                 <div className="card-head">
@@ -81,6 +88,23 @@ export function BoardView({
                     {task.title}
                   </button>
                   <div className="card-head-right">
+                    {task.emoji && (
+                      <span className="badge" title={emojiHint ?? task.emoji}>
+                        {task.emoji}
+                      </span>
+                    )}
+                    <button
+                      className="card-expand-btn"
+                      draggable
+                      onClick={(e) => e.stopPropagation()}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('taskId', String(task.id));
+                      }}
+                      aria-label="Перетащить задачу"
+                      title="Перетащить"
+                    >
+                      ⠿
+                    </button>
                     {tags.slice(0, 2).map((tag) => (
                       <span key={tag.id} className="tag-chip" style={{ borderColor: tag.color, color: tag.color }}>
                         {tag.name}
@@ -88,7 +112,10 @@ export function BoardView({
                     ))}
                     <button
                       className="card-expand-btn"
-                      onClick={() => setExpandedTaskId((prev) => (prev === task.id ? null : task.id))}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedTaskId((prev) => (prev === task.id ? null : task.id));
+                      }}
                       aria-label={expandedTaskId === task.id ? 'Свернуть карточку' : 'Развернуть карточку'}
                     >
                       {expandedTaskId === task.id ? '▴' : '▾'}
