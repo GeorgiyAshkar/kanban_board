@@ -27,6 +27,7 @@ class TaskBase(BaseModel):
     assignee_phone: Optional[str] = None
     assignee_email: Optional[str] = None
     assignee_org: Optional[str] = None
+    emoji: Optional[str] = None
 
 
 class TaskCreate(TaskBase):
@@ -53,6 +54,7 @@ class TaskPatch(BaseModel):
     assignee_phone: Optional[str] = None
     assignee_email: Optional[str] = None
     assignee_org: Optional[str] = None
+    emoji: Optional[str] = None
 
 
 class TaskRead(TaskBase):

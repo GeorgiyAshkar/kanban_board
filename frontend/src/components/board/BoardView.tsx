@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { BoardColumn, ChecklistItem, Task } from '../../types/task';
 import type { Tag } from '../../api/tasks';
+import emojiConfig from '../../emoji_config.json';
 
 interface Props {
   columns: BoardColumn[];
@@ -66,6 +67,7 @@ export function BoardView({
             const tags = taskTagsByTaskId[task.id] ?? [];
             const checklist = taskChecklistByTaskId[task.id] ?? [];
             const checklistDone = checklist.filter((item) => item.is_done).length;
+            const emojiHint = task.emoji ? emojiConfig[task.emoji as keyof typeof emojiConfig] : undefined;
             return (
               <article
                 key={task.id}
@@ -86,6 +88,11 @@ export function BoardView({
                     {task.title}
                   </button>
                   <div className="card-head-right">
+                    {task.emoji && (
+                      <span className="badge" title={emojiHint ?? task.emoji}>
+                        {task.emoji}
+                      </span>
+                    )}
                     <button
                       className="card-expand-btn"
                       draggable

@@ -61,6 +61,7 @@ class Task(Base):
     assignee_phone = Column(String(64), nullable=True)
     assignee_email = Column(String(255), nullable=True)
     assignee_org = Column(String(255), nullable=True)
+    emoji = Column(String(16), nullable=True)
 
     history = relationship("TaskHistory", back_populates="task", cascade="all, delete-orphan")
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")

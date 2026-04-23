@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChecklistItem, HistoryItem, Task, TaskComment, TaskReminder } from '../../types/task';
 import type { Tag } from '../../api/tasks';
+import emojiConfig from '../../emoji_config.json';
 
 interface Props {
   task?: Task;
@@ -56,6 +57,7 @@ export function TaskDrawer({
   const [assigneePhone, setAssigneePhone] = useState('');
   const [assigneeEmail, setAssigneeEmail] = useState('');
   const [assigneeOrg, setAssigneeOrg] = useState('');
+  const [draftEmoji, setDraftEmoji] = useState('');
 
   const freeTags = useMemo(() => allTags.filter((tag) => !taskTags.some((tt) => tt.id === tag.id)), [allTags, taskTags]);
 
@@ -73,6 +75,7 @@ export function TaskDrawer({
     setAssigneePhone(task.assignee_phone ?? '');
     setAssigneeEmail(task.assignee_email ?? '');
     setAssigneeOrg(task.assignee_org ?? '');
+    setDraftEmoji(task.emoji ?? '');
   }, [task]);
 
   if (!task) {
@@ -110,6 +113,14 @@ export function TaskDrawer({
               <option value="critical">Критический</option>
             </select>
           </div>
+          <select className="select-styled" value={draftEmoji} onChange={(e) => setDraftEmoji(e.target.value)}>
+            <option value="">Эмодзи: не выбрано</option>
+            {Object.entries(emojiConfig).map(([emoji, label]) => (
+              <option key={emoji} value={emoji}>
+                {emoji} — {label}
+              </option>
+            ))}
+          </select>
           <div className="row-fields">
             <input type="date" value={draftPlannedReturnAt} onChange={(e) => setDraftPlannedReturnAt(e.target.value)} />
             <input type="date" value={draftDeadlineAt} onChange={(e) => setDraftDeadlineAt(e.target.value)} />
@@ -141,6 +152,7 @@ export function TaskDrawer({
                 assignee_phone: assigneePhone || null,
                 assignee_email: assigneeEmail || null,
                 assignee_org: assigneeOrg || null,
+                emoji: draftEmoji || null,
               });
             }}
           >
