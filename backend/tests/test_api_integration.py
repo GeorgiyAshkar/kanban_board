@@ -7,8 +7,10 @@ def test_task_lifecycle_logs_history(client: TestClient) -> None:
     payload = columns.json()
     assert len(payload) >= 2
 
-    source_column_id = payload[0]['id']
-    target_column_id = payload[1]['id']
+    source_column = payload[0]
+    target_column = payload[1]
+    source_column_id = source_column['id']
+    target_column_id = target_column['id']
 
     created = client.post(
         '/tasks',
@@ -25,11 +27,11 @@ def test_task_lifecycle_logs_history(client: TestClient) -> None:
 
     moved = client.post(
         f'/tasks/{task_id}/move',
-        json={'board_column_id': target_column_id, 'status': 'in_progress', 'position': 1},
+        json={'board_column_id': target_column_id, 'position': 1},
     )
     assert moved.status_code == 200
     assert moved.json()['board_column_id'] == target_column_id
-    assert moved.json()['status'] == 'in_progress'
+    assert moved.json()['status'] == target_column['canonical_status']
 
     archived = client.post(f'/tasks/{task_id}/archive')
     assert archived.status_code == 200

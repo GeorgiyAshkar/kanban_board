@@ -156,6 +156,7 @@ class BoardColumn(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(128), nullable=False, unique=True)
+    canonical_status = Column(String(64), default="inbox", nullable=False)
     position = Column(Integer, default=0, nullable=False)
     color = Column(String(32), default="#e2e8f0")
     is_system = Column(Boolean, default=True, nullable=False)

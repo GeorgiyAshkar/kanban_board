@@ -34,8 +34,8 @@ export const patchTask = async (taskId: number, payload: Partial<Task>): Promise
   return data;
 };
 
-export const moveTask = async (taskId: number, board_column_id: number, status?: string, position?: number): Promise<Task> => {
-  const { data } = await api.post<Task>(`/tasks/${taskId}/move`, { board_column_id, status, position });
+export const moveTask = async (taskId: number, board_column_id: number, position?: number): Promise<Task> => {
+  const { data } = await api.post<Task>(`/tasks/${taskId}/move`, { board_column_id, position });
   return data;
 };
 
