@@ -51,6 +51,10 @@ export function TaskDrawer({
   const [draftPriority, setDraftPriority] = useState<Task['priority']>(task?.priority ?? 'normal');
   const [draftPlannedReturnAt, setDraftPlannedReturnAt] = useState('');
   const [draftDeadlineAt, setDraftDeadlineAt] = useState('');
+  const [draftProjectId, setDraftProjectId] = useState('');
+  const [draftColorMark, setDraftColorMark] = useState('#64748b');
+  const [draftEstimateMinutes, setDraftEstimateMinutes] = useState('');
+  const [draftSpentMinutes, setDraftSpentMinutes] = useState('');
   const [assigneeLastName, setAssigneeLastName] = useState('');
   const [assigneeFirstName, setAssigneeFirstName] = useState('');
   const [assigneeMiddleName, setAssigneeMiddleName] = useState('');
@@ -69,6 +73,10 @@ export function TaskDrawer({
     setDraftPriority(task.priority);
     setDraftPlannedReturnAt(task.planned_return_at ? task.planned_return_at.slice(0, 10) : '');
     setDraftDeadlineAt(task.deadline_at ? task.deadline_at.slice(0, 10) : '');
+    setDraftProjectId(task.project_id ?? '');
+    setDraftColorMark(task.color_mark ?? '#64748b');
+    setDraftEstimateMinutes(task.estimate_minutes != null ? String(task.estimate_minutes) : '');
+    setDraftSpentMinutes(task.spent_minutes != null ? String(task.spent_minutes) : '');
     setAssigneeLastName(task.assignee_last_name ?? '');
     setAssigneeFirstName(task.assignee_first_name ?? '');
     setAssigneeMiddleName(task.assignee_middle_name ?? '');
@@ -89,6 +97,11 @@ export function TaskDrawer({
         <div className="badges">
           <span className="badge" style={{ background: '#3b82f6' }}>{task.status}</span>
           <span className="badge" style={{ background: '#ec4899' }}>{task.priority}</span>
+          {(task.color_mark || draftColorMark) && (
+            <span className="badge" style={{ background: task.color_mark || draftColorMark }}>
+              Цвет
+            </span>
+          )}
           {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
         </div>
       </div>
@@ -125,6 +138,29 @@ export function TaskDrawer({
             <input type="date" value={draftPlannedReturnAt} onChange={(e) => setDraftPlannedReturnAt(e.target.value)} />
             <input type="date" value={draftDeadlineAt} onChange={(e) => setDraftDeadlineAt(e.target.value)} />
           </div>
+          <div className="row-fields">
+            <input value={draftProjectId} onChange={(e) => setDraftProjectId(e.target.value)} placeholder="Проект / ID проекта" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label className="muted" style={{ alignSelf: 'center' }}>Цвет</label>
+              <input type="color" value={draftColorMark || '#64748b'} onChange={(e) => setDraftColorMark(e.target.value)} />
+            </div>
+          </div>
+          <div className="row-fields">
+            <input
+              type="number"
+              min={0}
+              value={draftEstimateMinutes}
+              onChange={(e) => setDraftEstimateMinutes(e.target.value)}
+              placeholder="Оценка, мин"
+            />
+            <input
+              type="number"
+              min={0}
+              value={draftSpentMinutes}
+              onChange={(e) => setDraftSpentMinutes(e.target.value)}
+              placeholder="Затрачено, мин"
+            />
+          </div>
           <h4 style={{ margin: '8px 0 0' }}>Исполнитель</h4>
           <div className="row-fields">
             <input value={assigneeLastName} onChange={(e) => setAssigneeLastName(e.target.value)} placeholder="Фамилия" />
@@ -146,6 +182,10 @@ export function TaskDrawer({
                 priority: draftPriority as Task['priority'],
                 planned_return_at: draftPlannedReturnAt ? new Date(draftPlannedReturnAt).toISOString() : null,
                 deadline_at: draftDeadlineAt ? new Date(draftDeadlineAt).toISOString() : null,
+                project_id: draftProjectId || null,
+                color_mark: draftColorMark || null,
+                estimate_minutes: draftEstimateMinutes ? Number(draftEstimateMinutes) : null,
+                spent_minutes: draftSpentMinutes ? Number(draftSpentMinutes) : null,
                 assignee_last_name: assigneeLastName || null,
                 assignee_first_name: assigneeFirstName || null,
                 assignee_middle_name: assigneeMiddleName || null,
