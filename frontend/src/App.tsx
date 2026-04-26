@@ -1,31 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ackReminderNotificationEvent,
-  archiveTask,
-  addChecklistItem,
-  deleteChecklistItem,
-  addTaskTag,
-  addTaskComment,
-  createTag,
-  createTaskWithPayload,
-  createColumn,
-  fetchBoardData,
-  fetchTags,
-  fetchArchivedTasks,
-  fetchHistory,
-  fetchTaskDetails,
-  fetchToday,
-  moveTask,
-  patchChecklistItem,
-  patchColumn,
-  patchTag,
-  patchTask,
-  pullReminderNotificationEvents,
-  removeTaskTag,
-  restoreTask,
-  type Tag,
-} from './api/tasks';
 import { TopBar } from './components/common/TopBar';
 import { NewTaskModal } from './components/common/NewTaskModal';
 import { BoardPage } from './pages/BoardPage';
@@ -34,7 +7,9 @@ import { TodayPage } from './pages/TodayPage';
 import { ArchivePage } from './pages/ArchivePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useUIStore } from './store/uiStore';
-import type { ChecklistItem } from './types/task';
+import { useBoardQueries } from './hooks/useBoardQueries';
+import { useTaskMutations } from './hooks/useTaskMutations';
+import { useReminderNotifications } from './hooks/useReminderNotifications';
 import './styles.css';
 import fontConfig from './font_config.json';
 
@@ -43,59 +18,41 @@ type Page = 'board' | 'today' | 'history' | 'archive' | 'settings';
 export default function App() {
   const [page, setPage] = useState<Page>('board');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [taskTagsByTaskId, setTaskTagsByTaskId] = useState<Record<number, Tag[]>>({});
-  const [taskChecklistByTaskId, setTaskChecklistByTaskId] = useState<Record<number, ChecklistItem[]>>({});
-  const queryClient = useQueryClient();
   const { query, setQuery, activeTaskId, setActiveTaskId } = useUIStore();
 
-  const boardQuery = useQuery({ queryKey: ['board', query], queryFn: () => fetchBoardData(query) });
-  const archivedQuery = useQuery({ queryKey: ['tasks', 'archived'], queryFn: fetchArchivedTasks });
-  const historyQuery = useQuery({ queryKey: ['history'], queryFn: fetchHistory });
-  const todayQuery = useQuery({ queryKey: ['today'], queryFn: fetchToday });
-  const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: fetchTags });
+  const {
+    boardQuery,
+    archivedQuery,
+    historyQuery,
+    todayQuery,
+    tagsQuery,
+    taskDetailsQuery,
+    taskTagsByTaskId,
+    taskChecklistByTaskId,
+  } = useBoardQueries(query, activeTaskId);
 
-  const taskDetailsQuery = useQuery({
-    queryKey: ['task-details', activeTaskId],
-    queryFn: () => fetchTaskDetails(activeTaskId!),
-    enabled: Boolean(activeTaskId),
-  });
+  const {
+    onCreateTask,
+    onMoveTask,
+    onAddComment,
+    onToggleChecklist,
+    onAddChecklist,
+    onEditChecklist,
+    onDeleteChecklist,
+    onSaveTask,
+    onAddTag,
+    onRemoveTag,
+    onCreateTagAndAdd,
+    onArchiveTask,
+    onRestoreTask,
+    onCreateColumn,
+    onRenameColumn,
+    onUpdateColumnColor,
+    onCreateTag,
+    onUpdateTag,
+  } = useTaskMutations({ activeTaskId, setActiveTaskId });
 
-  useEffect(() => {
-    const metadata = boardQuery.data?.metadata ?? [];
-    setTaskTagsByTaskId(Object.fromEntries(metadata.map((item) => [item.task_id, item.tags])));
-    setTaskChecklistByTaskId(Object.fromEntries(metadata.map((item) => [item.task_id, item.checklist])));
-  }, [boardQuery.data]);
-
-  useEffect(() => {
-    if (!activeTaskId) return;
-    setTaskChecklistByTaskId((prev) => ({
-      ...prev,
-      [activeTaskId]: taskDetailsQuery.data?.checklist ?? [],
-    }));
-  }, [activeTaskId, taskDetailsQuery.data?.checklist]);
-
-  useEffect(() => {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'default') {
-      void Notification.requestPermission();
-    }
-    let afterId = 0;
-    const timer = window.setInterval(async () => {
-      try {
-        const events = await pullReminderNotificationEvents(afterId);
-        for (const event of events) {
-          afterId = Math.max(afterId, event.id);
-          if (Notification.permission === 'granted') {
-            new Notification(event.title, { body: event.body ?? 'Есть напоминание по задаче' });
-          }
-          await ackReminderNotificationEvent(event.id);
-        }
-      } catch {
-        // no-op: polling is best effort
-      }
-    }, 10000);
-    return () => window.clearInterval(timer);
-  }, []);
+  useReminderNotifications();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -109,276 +66,58 @@ export default function App() {
     root.style.setProperty('--font-drawer-title-base', fontConfig.font_drawer_title);
   }, []);
 
-  const refreshBoardData = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['board'] }),
-      queryClient.invalidateQueries({ queryKey: ['today'] }),
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'archived'] }),
-      queryClient.invalidateQueries({ queryKey: ['task-details', activeTaskId] }),
-      queryClient.invalidateQueries({ queryKey: ['tags'] }),
-    ]);
-  };
-
-  const handleCreateTask = () => setIsCreateOpen(true);
-
   return (
     <div className="app-shell">
-      <TopBar query={query} onQueryChange={setQuery} setPage={setPage} onCreateTask={handleCreateTask} />
+      <TopBar query={query} onQueryChange={setQuery} setPage={setPage} onCreateTask={() => setIsCreateOpen(true)} />
       <NewTaskModal
         open={isCreateOpen}
         columns={boardQuery.data?.columns ?? []}
         onClose={() => setIsCreateOpen(false)}
-        onSubmit={async ({ title, description, boardColumnId, status, priority, plannedReturnAt, deadlineAt }) => {
-          await createTaskWithPayload({
-            title,
-            description,
-            board_column_id: boardColumnId,
-            status,
-            priority,
-            planned_return_at: plannedReturnAt,
-            deadline_at: deadlineAt,
-          });
-          await refreshBoardData();
-        }}
+        onSubmit={onCreateTask}
       />
 
       <div className="content">
         {page === 'board' && (
-          <>
-            <BoardPage
-              columns={boardQuery.data?.columns ?? []}
-              tasks={boardQuery.data?.tasks ?? []}
-              query={query}
-              activeTaskId={activeTaskId}
-              setActiveTaskId={setActiveTaskId}
-              comments={taskDetailsQuery.data?.comments ?? []}
-              reminders={taskDetailsQuery.data?.reminders ?? []}
-              checklist={taskDetailsQuery.data?.checklist ?? []}
-              taskHistory={taskDetailsQuery.data?.history ?? []}
-              onMoveTask={async (taskId, columnId, position) => {
-                await moveTask(taskId, columnId, position);
-                await refreshBoardData();
-              }}
-              onAddComment={async (text) => {
-                if (!activeTaskId) return;
-                const tempId = -Date.now();
-                const optimisticComment = {
-                  id: tempId,
-                  task_id: activeTaskId,
-                  text,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  author: 'local_user',
-                };
-                const previous = queryClient.getQueryData(['task-details', activeTaskId]) as typeof taskDetailsQuery.data;
-                queryClient.setQueryData(['task-details', activeTaskId], {
-                  ...(previous ?? { comments: [], reminders: [], checklist: [], history: [], tags: [] }),
-                  comments: [...(previous?.comments ?? []), optimisticComment],
-                });
-                try {
-                  const saved = await addTaskComment(activeTaskId, text);
-                  queryClient.setQueryData(['task-details', activeTaskId], (current: typeof taskDetailsQuery.data) => ({
-                    ...(current ?? { comments: [], reminders: [], checklist: [], history: [], tags: [] }),
-                    comments: (current?.comments ?? []).map((item) => (item.id === tempId ? saved : item)),
-                  }));
-                  await Promise.all([
-                    queryClient.invalidateQueries({ queryKey: ['history'] }),
-                    queryClient.invalidateQueries({ queryKey: ['task-details', activeTaskId] }),
-                  ]);
-                } catch (error) {
-                  queryClient.setQueryData(['task-details', activeTaskId], previous);
-                  throw error;
-                }
-              }}
-              onToggleChecklist={async (itemId, isDone, taskId) => {
-                const targetTaskId = taskId ?? activeTaskId;
-                if (!targetTaskId) return;
-                const previousDetails = queryClient.getQueryData(['task-details', targetTaskId]) as typeof taskDetailsQuery.data;
-                const previousChecklist = previousDetails?.checklist ?? [];
-                const applyChecklistPatch = (items: typeof previousChecklist) =>
-                  (items ?? []).map((item) => (item.id === itemId ? { ...item, is_done: isDone } : item));
-
-                queryClient.setQueryData(['task-details', targetTaskId], {
-                  ...(previousDetails ?? { comments: [], reminders: [], checklist: [], history: [], tags: [] }),
-                  checklist: applyChecklistPatch(previousChecklist),
-                });
-                setTaskChecklistByTaskId((prev) => ({
-                  ...prev,
-                  [targetTaskId]: applyChecklistPatch(prev[targetTaskId] ?? []),
-                }));
-
-                try {
-                  await patchChecklistItem(itemId, { is_done: isDone });
-                  await Promise.all([
-                    queryClient.invalidateQueries({ queryKey: ['board'] }),
-                    queryClient.invalidateQueries({ queryKey: ['task-details', targetTaskId] }),
-                  ]);
-                } catch (error) {
-                  queryClient.setQueryData(['task-details', targetTaskId], previousDetails);
-                  setTaskChecklistByTaskId((prev) => ({
-                    ...prev,
-                    [targetTaskId]: previousChecklist ?? [],
-                  }));
-                  throw error;
-                }
-              }}
-              onAddChecklist={async (title) => {
-                if (!activeTaskId) return;
-                const tempId = -Date.now();
-                const previousDetails = queryClient.getQueryData(['task-details', activeTaskId]) as typeof taskDetailsQuery.data;
-                const previousChecklist = previousDetails?.checklist ?? [];
-                const tempItem = {
-                  id: tempId,
-                  task_id: activeTaskId,
-                  title,
-                  position: (previousChecklist ?? []).length,
-                  is_done: false,
-                };
-                queryClient.setQueryData(['task-details', activeTaskId], {
-                  ...(previousDetails ?? { comments: [], reminders: [], checklist: [], history: [], tags: [] }),
-                  checklist: [...previousChecklist, tempItem],
-                });
-                setTaskChecklistByTaskId((prev) => ({
-                  ...prev,
-                  [activeTaskId]: [...(prev[activeTaskId] ?? []), tempItem],
-                }));
-                try {
-                  const saved = await addChecklistItem(activeTaskId, title);
-                  queryClient.setQueryData(['task-details', activeTaskId], (current: typeof taskDetailsQuery.data) => ({
-                    ...(current ?? { comments: [], reminders: [], checklist: [], history: [], tags: [] }),
-                    checklist: (current?.checklist ?? []).map((item) => (item.id === tempId ? saved : item)),
-                  }));
-                  setTaskChecklistByTaskId((prev) => ({
-                    ...prev,
-                    [activeTaskId]: (prev[activeTaskId] ?? ([] as ChecklistItem[])).map((item) => (item.id === tempId ? saved : item)),
-                  }));
-                  await Promise.all([
-                    queryClient.invalidateQueries({ queryKey: ['board'] }),
-                    queryClient.invalidateQueries({ queryKey: ['task-details', activeTaskId] }),
-                  ]);
-                } catch (error) {
-                  queryClient.setQueryData(['task-details', activeTaskId], previousDetails);
-                  setTaskChecklistByTaskId((prev) => ({
-                    ...prev,
-                    [activeTaskId]: previousChecklist ?? [],
-                  }));
-                  throw error;
-                }
-              }}
-              onEditChecklist={async (itemId, title) => {
-                if (!activeTaskId) return;
-                const previousDetails = queryClient.getQueryData(['task-details', activeTaskId]) as typeof taskDetailsQuery.data;
-                const previousChecklist = previousDetails?.checklist ?? [];
-                const applyChecklistPatch = (items: typeof previousChecklist) =>
-                  (items ?? []).map((item) => (item.id === itemId ? { ...item, title } : item));
-                queryClient.setQueryData(['task-details', activeTaskId], {
-                  ...(previousDetails ?? { comments: [], reminders: [], checklist: [], history: [], tags: [] }),
-                  checklist: applyChecklistPatch(previousChecklist),
-                });
-                setTaskChecklistByTaskId((prev) => ({
-                  ...prev,
-                  [activeTaskId]: applyChecklistPatch(prev[activeTaskId] ?? []),
-                }));
-                try {
-                  await patchChecklistItem(itemId, { title });
-                  await queryClient.invalidateQueries({ queryKey: ['task-details', activeTaskId] });
-                } catch (error) {
-                  queryClient.setQueryData(['task-details', activeTaskId], previousDetails);
-                  setTaskChecklistByTaskId((prev) => ({
-                    ...prev,
-                    [activeTaskId]: previousChecklist ?? [],
-                  }));
-                  throw error;
-                }
-              }}
-              onDeleteChecklist={async (itemId) => {
-                if (!activeTaskId) return;
-                const previousDetails = queryClient.getQueryData(['task-details', activeTaskId]) as typeof taskDetailsQuery.data;
-                const previousChecklist = previousDetails?.checklist ?? [];
-                const nextChecklist = (previousChecklist ?? []).filter((item) => item.id !== itemId);
-                queryClient.setQueryData(['task-details', activeTaskId], {
-                  ...(previousDetails ?? { comments: [], reminders: [], checklist: [], history: [], tags: [] }),
-                  checklist: nextChecklist,
-                });
-                setTaskChecklistByTaskId((prev) => ({
-                  ...prev,
-                  [activeTaskId]: (prev[activeTaskId] ?? ([] as ChecklistItem[])).filter((item) => item.id !== itemId),
-                }));
-                try {
-                  await deleteChecklistItem(itemId);
-                  await queryClient.invalidateQueries({ queryKey: ['task-details', activeTaskId] });
-                } catch (error) {
-                  queryClient.setQueryData(['task-details', activeTaskId], previousDetails);
-                  setTaskChecklistByTaskId((prev) => ({
-                    ...prev,
-                    [activeTaskId]: previousChecklist ?? [],
-                  }));
-                  throw error;
-                }
-              }}
-              onSaveTask={async (patch) => {
-                if (!activeTaskId) return;
-                await patchTask(activeTaskId, patch);
-                await refreshBoardData();
-              }}
-              taskTags={taskDetailsQuery.data?.tags ?? []}
-              allTags={tagsQuery.data ?? []}
-              onAddTag={async (tagId) => {
-                if (!activeTaskId) return;
-                await addTaskTag(activeTaskId, tagId);
-                await refreshBoardData();
-              }}
-              onRemoveTag={async (tagId) => {
-                if (!activeTaskId) return;
-                await removeTaskTag(activeTaskId, tagId);
-                await refreshBoardData();
-              }}
-              onCreateTagAndAdd={async (name) => {
-                if (!activeTaskId) return;
-                const tag = await createTag(name);
-                await addTaskTag(activeTaskId, tag.id);
-                await refreshBoardData();
-              }}
-              taskTagsByTaskId={taskTagsByTaskId}
-              taskChecklistByTaskId={taskChecklistByTaskId}
-              onArchiveTask={async () => {
-                if (!activeTaskId) return;
-                await archiveTask(activeTaskId);
-                setActiveTaskId(null);
-                await refreshBoardData();
-              }}
-            />
-          </>
+          <BoardPage
+            columns={boardQuery.data?.columns ?? []}
+            tasks={boardQuery.data?.tasks ?? []}
+            query={query}
+            activeTaskId={activeTaskId}
+            setActiveTaskId={setActiveTaskId}
+            comments={taskDetailsQuery.data?.comments ?? []}
+            reminders={taskDetailsQuery.data?.reminders ?? []}
+            checklist={taskDetailsQuery.data?.checklist ?? []}
+            taskHistory={taskDetailsQuery.data?.history ?? []}
+            onMoveTask={onMoveTask}
+            onAddComment={onAddComment}
+            onToggleChecklist={onToggleChecklist}
+            onAddChecklist={onAddChecklist}
+            onEditChecklist={onEditChecklist}
+            onDeleteChecklist={onDeleteChecklist}
+            onSaveTask={onSaveTask}
+            taskTags={taskDetailsQuery.data?.tags ?? []}
+            allTags={tagsQuery.data ?? []}
+            onAddTag={onAddTag}
+            onRemoveTag={onRemoveTag}
+            onCreateTagAndAdd={onCreateTagAndAdd}
+            taskTagsByTaskId={taskTagsByTaskId}
+            taskChecklistByTaskId={taskChecklistByTaskId}
+            onArchiveTask={onArchiveTask}
+          />
         )}
 
         {page === 'today' && <TodayPage today={todayQuery.data} />}
         {page === 'history' && <HistoryPage items={historyQuery.data ?? []} />}
-        {page === 'archive' && <ArchivePage tasks={archivedQuery.data ?? []} onRestore={async (id) => { await restoreTask(id); await refreshBoardData(); }} />}
+        {page === 'archive' && <ArchivePage tasks={archivedQuery.data ?? []} onRestore={onRestoreTask} />}
         {page === 'settings' && (
           <SettingsPage
             columns={boardQuery.data?.columns ?? []}
             tags={tagsQuery.data ?? []}
-            onCreateColumn={async (name) => {
-              const pos = (boardQuery.data?.columns ?? []).length;
-              await createColumn(name, pos);
-              await refreshBoardData();
-            }}
-            onRenameColumn={async (columnId, name) => {
-              await patchColumn(columnId, { name });
-              await refreshBoardData();
-            }}
-            onUpdateColumnColor={async (columnId, color) => {
-              await patchColumn(columnId, { color });
-              await refreshBoardData();
-            }}
-            onCreateTag={async (name, color) => {
-              await createTag(name, color);
-              await refreshBoardData();
-            }}
-            onUpdateTag={async (tagId, name, color) => {
-              await patchTag(tagId, { name, color });
-              await refreshBoardData();
-            }}
+            onCreateColumn={async (name) => onCreateColumn(name, (boardQuery.data?.columns ?? []).length)}
+            onRenameColumn={onRenameColumn}
+            onUpdateColumnColor={onUpdateColumnColor}
+            onCreateTag={onCreateTag}
+            onUpdateTag={onUpdateTag}
           />
         )}
       </div>
