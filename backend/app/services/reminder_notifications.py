@@ -2,13 +2,86 @@ from __future__ import annotations
 
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal
-from app.models.models import ReminderNotification, ReminderNotificationStatus, Task, TaskReminder
+from app.models.models import ReminderNotification, ReminderNotificationStatus, Task, TaskPriority, TaskReminder
+from app.services.history import log_history
+
+AUTOMATION_REMINDER_PREFIX = "[AUTO] Срочный дедлайн"
+
+PRIORITY_ESCALATION = {
+    TaskPriority.LOW: TaskPriority.NORMAL,
+    TaskPriority.NORMAL: TaskPriority.HIGH,
+    TaskPriority.HIGH: TaskPriority.CRITICAL,
+    TaskPriority.CRITICAL: TaskPriority.CRITICAL,
+}
+
+
+def apply_deadline_automation(db: Session, now: datetime | None = None) -> int:
+    current_time = now or datetime.utcnow()
+    upcoming_deadline = current_time + timedelta(hours=24)
+    candidates = db.scalars(
+        select(Task).where(
+            Task.is_done.is_(False),
+            Task.is_archived.is_(False),
+            Task.deadline_at.is_not(None),
+            Task.deadline_at <= upcoming_deadline,
+            Task.deadline_at >= current_time,
+            Task.status != "done",
+        )
+    ).all()
+
+    changed = 0
+    for task in candidates:
+        next_priority = PRIORITY_ESCALATION.get(task.priority, TaskPriority.CRITICAL)
+        if next_priority != task.priority:
+            old_priority = task.priority
+            task.priority = next_priority
+            task.updated_at = current_time
+            log_history(
+                db,
+                task_id=task.id,
+                action_type="priority_auto_escalated",
+                field_name="priority",
+                old_value=str(old_priority),
+                new_value=str(next_priority),
+                comment="Дедлайн < 24ч и задача не завершена",
+            )
+            changed += 1
+
+        existing_auto_reminder = db.scalar(
+            select(TaskReminder).where(
+                TaskReminder.task_id == task.id,
+                TaskReminder.is_completed.is_(False),
+                TaskReminder.message.ilike(f"{AUTOMATION_REMINDER_PREFIX}%"),
+            )
+        )
+        if existing_auto_reminder:
+            continue
+
+        reminder_time = min(task.deadline_at, current_time + timedelta(minutes=5))
+        reminder = TaskReminder(
+            task_id=task.id,
+            remind_at=reminder_time,
+            message=f"{AUTOMATION_REMINDER_PREFIX}: до дедлайна осталось меньше 24 часов.",
+        )
+        db.add(reminder)
+        log_history(
+            db,
+            task_id=task.id,
+            action_type="reminder_auto_created",
+            new_value=reminder_time.isoformat(),
+            comment="Автоматическое правило для дедлайна < 24ч",
+        )
+        changed += 1
+
+    if changed:
+        db.flush()
+    return changed
 
 
 def enqueue_due_reminders(db: Session, now: datetime | None = None) -> int:
@@ -101,6 +174,7 @@ class ReminderNotificationWorker:
         while not self._stop_event.is_set():
             db = SessionLocal()
             try:
+                apply_deadline_automation(db)
                 enqueue_due_reminders(db)
                 dispatch_queued_notifications(db)
                 db.commit()

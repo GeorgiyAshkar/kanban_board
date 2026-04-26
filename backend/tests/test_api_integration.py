@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta
+
 from fastapi.testclient import TestClient
 from app.db.database import SessionLocal
-from app.services.reminder_notifications import dispatch_queued_notifications, enqueue_due_reminders
+from app.services.reminder_notifications import apply_deadline_automation, dispatch_queued_notifications, enqueue_due_reminders
 
 
 def test_task_lifecycle_logs_history(client: TestClient) -> None:
@@ -140,7 +142,7 @@ def test_board_and_task_details_aggregates_and_notification_delivery(client: Tes
     assert any(event['reminder_id'] == reminder_id for event in payload)
     event = next(event for event in payload if event['reminder_id'] == reminder_id)
 
-    ack = client.post(f\"/notifications/events/{event['id']}/ack\")
+    ack = client.post(f"/notifications/events/{event['id']}/ack")
     assert ack.status_code == 200
     assert ack.json()['status'] == 'acknowledged'
 
@@ -225,3 +227,36 @@ def test_analytics_report_contains_summary_and_trends(client: TestClient) -> Non
     assert 'trend' in payload
     assert payload['summary']['completed_tasks'] >= 1
     assert isinstance(payload['trend'], list)
+
+
+def test_deadline_automation_escalates_priority_and_creates_reminder(client: TestClient) -> None:
+    now = datetime.utcnow()
+    created = client.post(
+        '/tasks',
+        json={
+            'title': 'Automation target',
+            'description': 'check automation',
+            'priority': 'normal',
+            'status': 'todo',
+            'deadline_at': (now + timedelta(hours=3)).isoformat() + 'Z',
+        },
+    )
+    assert created.status_code == 201
+    task_id = created.json()['id']
+
+    db = SessionLocal()
+    try:
+        affected = apply_deadline_automation(db, now=now)
+        db.commit()
+    finally:
+        db.close()
+
+    assert affected >= 2
+    refreshed = client.get('/tasks', params={'archived': 'false', 'limit': 200})
+    assert refreshed.status_code == 200
+    task = next(item for item in refreshed.json() if item['id'] == task_id)
+    assert task['priority'] == 'high'
+
+    reminders = client.get(f'/tasks/{task_id}/reminders')
+    assert reminders.status_code == 200
+    assert any('[AUTO] Срочный дедлайн' in (item.get('message') or '') for item in reminders.json())
