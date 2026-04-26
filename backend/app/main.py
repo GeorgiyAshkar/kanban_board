@@ -3,10 +3,11 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import checklist, columns, comments, history, reminders, tags, task_tags, tasks, today
+from app.api import checklist, columns, comments, history, notifications, reminders, tags, task_tags, tasks, today
 from app.db.database import SessionLocal
 from app.db.migrations import run_migrations
 from app.models.models import BoardColumn
+from app.services.reminder_notifications import ReminderNotificationWorker
 
 def _allowed_origins() -> list[str]:
     raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080")
@@ -32,6 +33,9 @@ app.include_router(task_tags.router)
 app.include_router(checklist.router)
 app.include_router(columns.router)
 app.include_router(today.router)
+app.include_router(notifications.router)
+
+notification_worker = ReminderNotificationWorker(interval_seconds=5)
 
 
 @app.on_event("startup")
@@ -55,6 +59,12 @@ def on_startup() -> None:
         db.commit()
     finally:
         db.close()
+    notification_worker.start()
+
+
+@app.on_event("shutdown")
+def on_shutdown() -> None:
+    notification_worker.stop()
 
 
 @app.get("/health")

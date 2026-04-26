@@ -1,4 +1,6 @@
 from fastapi.testclient import TestClient
+from app.db.database import SessionLocal
+from app.services.reminder_notifications import dispatch_queued_notifications, enqueue_due_reminders
 
 
 def test_task_lifecycle_logs_history(client: TestClient) -> None:
@@ -99,3 +101,45 @@ def test_checklist_comments_tags_metadata_flow(client: TestClient) -> None:
     search = client.get('/tasks', params={'q': 'critical-flow', 'archived': 'false'})
     assert search.status_code == 200
     assert any(found['id'] == task_id for found in search.json())
+
+
+def test_board_and_task_details_aggregates_and_notification_delivery(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Reminder task', 'description': 'body', 'priority': 'normal'})
+    assert created.status_code == 201
+    task_id = created.json()['id']
+
+    reminder = client.post(
+        f'/tasks/{task_id}/reminders',
+        json={'remind_at': '2020-01-01T00:00:00Z', 'message': 'Пора проверить задачу'},
+    )
+    assert reminder.status_code == 201
+    reminder_id = reminder.json()['id']
+
+    board = client.get('/tasks/board', params={'archived': 'false'})
+    assert board.status_code == 200
+    board_payload = board.json()
+    assert board_payload['total'] >= 1
+    assert any(item['id'] == task_id for item in board_payload['tasks'])
+
+    details = client.get(f'/tasks/{task_id}/details')
+    assert details.status_code == 200
+    assert 'reminders' in details.json()
+    assert any(item['id'] == reminder_id for item in details.json()['reminders'])
+
+    db = SessionLocal()
+    try:
+        enqueue_due_reminders(db)
+        dispatch_queued_notifications(db)
+        db.commit()
+    finally:
+        db.close()
+
+    events = client.get('/notifications/events', params={'after_id': 0, 'limit': 10})
+    assert events.status_code == 200
+    payload = events.json()
+    assert any(event['reminder_id'] == reminder_id for event in payload)
+    event = next(event for event in payload if event['reminder_id'] == reminder_id)
+
+    ack = client.post(f\"/notifications/events/{event['id']}/ack\")
+    assert ack.status_code == 200
+    assert ack.json()['status'] == 'acknowledged'
