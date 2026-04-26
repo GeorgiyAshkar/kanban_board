@@ -20,6 +20,13 @@ const priorityBg: Record<string, string> = {
   critical: 'rgba(239, 68, 68, 0.18)',
 };
 
+const priorityDot: Record<string, string> = {
+  low: '🟢',
+  normal: '🟡',
+  high: '🟠',
+  critical: '🔴',
+};
+
 const toCardBackground = (colorMark?: string | null, fallback?: string): string => {
   if (!colorMark) return fallback ?? priorityBg.normal;
   const normalized = colorMark.trim();
@@ -102,6 +109,9 @@ export function BoardView({
                     {task.title}
                   </button>
                   <div className="card-head-right">
+                    <span className="priority-indicator" title={`Приоритет: ${task.priority}`}>
+                      {priorityDot[task.priority] ?? priorityDot.normal}
+                    </span>
                     {task.emoji && (
                       <span className="badge" title={emojiHint ?? task.emoji}>
                         {task.emoji}
