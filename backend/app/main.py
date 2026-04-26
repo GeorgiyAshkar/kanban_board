@@ -1,12 +1,14 @@
 import os
+import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import checklist, columns, comments, history, notifications, reminders, tags, task_tags, tasks, today
+from app.api import checklist, columns, comments, history, notifications, ops, reminders, tags, task_tags, tasks, today
 from app.db.database import SessionLocal
 from app.db.migrations import run_migrations
 from app.models.models import BoardColumn
+from app.observability import log_event, metrics_registry, setup_structured_logging
 from app.services.reminder_notifications import ReminderNotificationWorker
 
 def _allowed_origins() -> list[str]:
@@ -34,12 +36,14 @@ app.include_router(checklist.router)
 app.include_router(columns.router)
 app.include_router(today.router)
 app.include_router(notifications.router)
+app.include_router(ops.router)
 
 notification_worker = ReminderNotificationWorker(interval_seconds=5)
 
 
 @app.on_event("startup")
 def on_startup() -> None:
+    setup_structured_logging()
     run_migrations()
     db = SessionLocal()
     try:
@@ -60,13 +64,30 @@ def on_startup() -> None:
     finally:
         db.close()
     notification_worker.start()
+    log_event("app_startup", status="ok")
 
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
     notification_worker.stop()
+    log_event("app_shutdown", status="ok")
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+@app.middleware("http")
+async def observe_requests(request: Request, call_next):
+    started = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        duration_seconds = time.perf_counter() - started
+        metrics_registry.observe_request(status_code=status_code, duration_seconds=duration_seconds)
+        log_event(
+            "http_request",
+            method=request.method,
+            path=request.url.path,
+            status_code=status_code,
+            latency_ms=round(duration_seconds * 1000, 2),
+        )
