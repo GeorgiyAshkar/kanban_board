@@ -11,6 +11,7 @@ import {
   createTaskWithPayload,
   createColumn,
   fetchBoardData,
+  fetchAnalyticsReport,
   fetchTags,
   fetchArchivedTasks,
   fetchHistory,
@@ -21,7 +22,6 @@ import {
   patchColumn,
   patchTag,
   patchTask,
-  pullReminderNotificationEvents,
   removeTaskTag,
   restoreTask,
   type BoardFilters,
@@ -34,12 +34,13 @@ import { HistoryPage } from './pages/HistoryPage';
 import { TodayPage } from './pages/TodayPage';
 import { ArchivePage } from './pages/ArchivePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { useUIStore } from './store/uiStore';
 import type { ChecklistItem } from './types/task';
 import './styles.css';
 import fontConfig from './font_config.json';
 
-type Page = 'board' | 'today' | 'history' | 'archive' | 'settings';
+type Page = 'board' | 'today' | 'history' | 'archive' | 'reports' | 'settings';
 const SAVED_FILTERS_KEY = 'kanban.saved-filters.v1';
 
 const defaultBoardFilters: BoardFilters = {
@@ -66,6 +67,8 @@ export default function App() {
       return [];
     }
   });
+  const [reportDays, setReportDays] = useState(30);
+  const [reportBucket, setReportBucket] = useState<'day' | 'week'>('week');
   const queryClient = useQueryClient();
   const { query, setQuery, activeTaskId, setActiveTaskId } = useUIStore();
 
@@ -77,6 +80,10 @@ export default function App() {
   const historyQuery = useQuery({ queryKey: ['history'], queryFn: fetchHistory });
   const todayQuery = useQuery({ queryKey: ['today'], queryFn: fetchToday });
   const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: fetchTags });
+  const analyticsQuery = useQuery({
+    queryKey: ['analytics', reportDays, reportBucket],
+    queryFn: () => fetchAnalyticsReport(reportDays, reportBucket),
+  });
 
   const taskDetailsQuery = useQuery({
     queryKey: ['task-details', activeTaskId],
@@ -107,22 +114,32 @@ export default function App() {
     if (Notification.permission === 'default') {
       void Notification.requestPermission();
     }
-    let afterId = 0;
-    const timer = window.setInterval(async () => {
-      try {
-        const events = await pullReminderNotificationEvents(afterId);
-        for (const event of events) {
-          afterId = Math.max(afterId, event.id);
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api';
+    const normalizedBase = apiBase.startsWith('http')
+      ? apiBase
+      : new URL(apiBase, window.location.origin).toString();
+    const streamUrl = `${normalizedBase.replace(/\/$/, '')}/notifications/stream`;
+    const source = new EventSource(streamUrl);
+
+    source.addEventListener('reminder', (raw) => {
+      void (async () => {
+        try {
+          const event = JSON.parse(raw.data) as { id: number; title: string; body?: string };
           if (Notification.permission === 'granted') {
             new Notification(event.title, { body: event.body ?? 'Есть напоминание по задаче' });
           }
           await ackReminderNotificationEvent(event.id);
+        } catch {
+          // no-op: SSE delivery is best effort
         }
-      } catch {
-        // no-op: polling is best effort
-      }
-    }, 10000);
-    return () => window.clearInterval(timer);
+      })();
+    });
+
+    source.onerror = () => {
+      // no-op: EventSource reconnects automatically
+    };
+
+    return () => source.close();
   }, []);
 
   useEffect(() => {
@@ -432,6 +449,16 @@ export default function App() {
               await patchTag(tagId, { name, color });
               await refreshBoardData();
             }}
+          />
+        )}
+        {page === 'reports' && (
+          <ReportsPage
+            report={analyticsQuery.data}
+            loading={analyticsQuery.isLoading}
+            days={reportDays}
+            bucket={reportBucket}
+            onDaysChange={setReportDays}
+            onBucketChange={setReportBucket}
           />
         )}
       </div>

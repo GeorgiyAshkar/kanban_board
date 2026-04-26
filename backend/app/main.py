@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import checklist, columns, comments, history, notifications, reminders, tags, task_tags, tasks, today
+from app.api import analytics, checklist, columns, comments, history, notifications, reminders, tags, task_tags, tasks, today
 from app.db.database import SessionLocal
 from app.db.migrations import run_migrations
 from app.models.models import BoardColumn
@@ -34,6 +34,7 @@ app.include_router(checklist.router)
 app.include_router(columns.router)
 app.include_router(today.router)
 app.include_router(notifications.router)
+app.include_router(analytics.router)
 
 notification_worker = ReminderNotificationWorker(interval_seconds=5)
 

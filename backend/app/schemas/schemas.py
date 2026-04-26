@@ -257,3 +257,32 @@ class ReminderNotificationRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AnalyticsTrendPoint(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    completed_tasks: int
+    created_tasks: int
+    overdue_open_tasks: int
+    wip_open_tasks: int
+    avg_lead_time_hours: float | None = None
+    avg_cycle_time_hours: float | None = None
+
+
+class AnalyticsSummary(BaseModel):
+    window_start: datetime
+    window_end: datetime
+    total_tasks: int
+    created_tasks: int
+    completed_tasks: int
+    overdue_open_tasks: int
+    wip_open_tasks: int
+    velocity_per_period: float
+    avg_lead_time_hours: float | None = None
+    avg_cycle_time_hours: float | None = None
+
+
+class AnalyticsReportResponse(BaseModel):
+    summary: AnalyticsSummary
+    trend: list[AnalyticsTrendPoint]

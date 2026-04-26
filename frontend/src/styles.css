@@ -208,6 +208,19 @@ body { margin: 0; background: #eef2f8; overflow-x: hidden; -webkit-text-size-adj
 .settings-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 6px; align-items: center; }
 .settings-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font-size: var(--font-text); }
 .settings-hint { color: #64748b; font-size: var(--font-meta); }
+.reports-page { background: #fff; border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.reports-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.reports-head h3 { margin: 0 auto 0 0; }
+.reports-head label { display: grid; gap: 4px; font-size: var(--font-meta); }
+.reports-head select { border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 8px; }
+.reports-grid { display: grid; gap: 10px; grid-template-columns: repeat(5, minmax(160px, 1fr)); }
+.reports-chart { display: grid; gap: 8px; }
+.trend-list { display: grid; gap: 6px; }
+.trend-row { display: grid; grid-template-columns: 280px 1fr 40px; gap: 8px; align-items: center; }
+.trend-label { font-size: var(--font-meta); color: #475569; }
+.trend-bar-wrap { background: #e2e8f0; border-radius: 999px; overflow: hidden; height: 16px; }
+.trend-bar { background: linear-gradient(90deg, #2563eb, #22c55e); height: 100%; min-width: 2px; }
+.trend-value { font-weight: 700; text-align: right; }
 
 .modal-backdrop {
   position: fixed;
