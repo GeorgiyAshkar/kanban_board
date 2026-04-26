@@ -20,6 +20,20 @@ const priorityBg: Record<string, string> = {
   critical: 'rgba(239, 68, 68, 0.18)',
 };
 
+const toCardBackground = (colorMark?: string | null, fallback?: string): string => {
+  if (!colorMark) return fallback ?? priorityBg.normal;
+  const normalized = colorMark.trim();
+  if (!/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(normalized)) return fallback ?? priorityBg.normal;
+  const hex = normalized.length === 4
+    ? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
+    : normalized;
+  const value = hex.slice(1);
+  const r = Number.parseInt(value.slice(0, 2), 16);
+  const g = Number.parseInt(value.slice(2, 4), 16);
+  const b = Number.parseInt(value.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, 0.18)`;
+};
+
 export function BoardView({
   columns,
   tasks,
@@ -72,7 +86,7 @@ export function BoardView({
               <article
                 key={task.id}
                 className={`card ${expandedTaskId === task.id ? 'expanded' : ''}`}
-                style={{ background: priorityBg[task.priority] ?? priorityBg.normal }}
+                style={{ background: toCardBackground(task.color_mark, priorityBg[task.priority] ?? priorityBg.normal) }}
                 onClick={() => onOpenTask(task.id)}
                 role="button"
                 tabIndex={0}

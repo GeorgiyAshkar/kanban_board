@@ -97,6 +97,11 @@ export function TaskDrawer({
         <div className="badges">
           <span className="badge" style={{ background: '#3b82f6' }}>{task.status}</span>
           <span className="badge" style={{ background: '#ec4899' }}>{task.priority}</span>
+          {(task.color_mark || draftColorMark) && (
+            <span className="badge" style={{ background: task.color_mark || draftColorMark }}>
+              Цвет
+            </span>
+          )}
           {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
         </div>
       </div>
