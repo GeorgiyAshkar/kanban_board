@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -9,6 +10,7 @@ from app.db.database import Base
 from app.models import models  # noqa: F401
 
 config = context.config
+config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url")))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
