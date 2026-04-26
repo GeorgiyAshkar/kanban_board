@@ -10,9 +10,48 @@ services:
     volumes:
       - ./data/kanban.db:/app/backend/kanban.db
     environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///./kanban.db}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080}
     ports:
       - "8000:8000"
+    expose:
+      - "8000"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: kanban_postgres
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kanban}
+      POSTGRES_USER: ${POSTGRES_USER:-kanban}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kanban}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kanban} -d ${POSTGRES_DB:-kanban}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend_postgres:
+    image: kanban-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+    container_name: kanban_backend_postgres
+    profiles: ["postgres"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL_POSTGRES:-postgresql+psycopg://kanban:kanban@postgres:5432/kanban}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080}
+    ports:
+      - "8001:8000"
     expose:
       - "8000"
 
@@ -29,3 +68,6 @@ services:
       - backend
     ports:
       - "8080:80"
+
+volumes:
+  postgres_data:

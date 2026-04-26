@@ -7,7 +7,7 @@
 - **Frontend:** React + TypeScript + Vite + Zustand + TanStack Query
 - **Backend:** FastAPI + SQLAlchemy
 - **Migrations:** Alembic (автоматический `upgrade head` при старте backend)
-- **DB:** SQLite (`kanban.db`)
+- **DB:** SQLite (`kanban.db`) по умолчанию + опциональный профиль PostgreSQL
 
 ## Что реализовано по ТЗ
 
@@ -100,6 +100,44 @@ docker compose up --build -d
 - backend API: `http://localhost:8080/api/...` (через nginx-proxy)
 
 `docker-compose` прокидывает `ALLOWED_ORIGINS` в backend; при необходимости задайте его в `.env`.
+
+### Опциональный профиль PostgreSQL (dual-mode)
+
+По умолчанию ничего не меняется: backend продолжает работать на SQLite (`./data/kanban.db`), поэтому ваша текущая накопленная база не затрагивается.
+
+Если нужен запуск на PostgreSQL:
+
+```bash
+docker compose --profile postgres up --build -d postgres backend_postgres
+```
+
+После запуска:
+- PostgreSQL: `localhost:5432`
+- Backend (PostgreSQL-профиль): `http://localhost:8001`
+
+Важные переменные:
+- `DATABASE_URL` — URL базы для обычного `backend` (по умолчанию SQLite).
+- `DATABASE_URL_POSTGRES` — URL базы для `backend_postgres` (по умолчанию `postgresql+psycopg://kanban:kanban@postgres:5432/kanban`).
+
+Миграции Alembic применяются автоматически на startup для обеих БД (через `DATABASE_URL`), включая добавленные индексы для частых выборок доски/истории/тегов.
+
+### Локальный запуск backend с PostgreSQL (без Docker Compose профиля)
+
+```bash
+cd backend
+export DATABASE_URL='postgresql+psycopg://kanban:kanban@localhost:5432/kanban'
+uvicorn app.main:app --reload
+```
+
+### Безопасность текущей SQLite-базы
+
+- Текущий путь и формат SQLite сохранены: `sqlite:///./kanban.db`.
+- Новая миграция добавляет **только индексы** (без удаления/пересоздания таблиц и без изменения данных).
+- Для дополнительной подстраховки можно сделать копию файла перед обновлением:
+
+```bash
+cp data/kanban.db data/kanban.backup.$(date +%Y%m%d_%H%M%S).db
+```
 
 ### 2) Сборка и упаковка Docker-образов в tar.gz
 
