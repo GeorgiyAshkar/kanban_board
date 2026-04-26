@@ -109,41 +109,45 @@ export function BoardView({
                     {task.title}
                   </button>
                   <div className="card-head-right">
-                    <span className="priority-indicator" title={`Приоритет: ${task.priority}`}>
-                      {priorityDot[task.priority] ?? priorityDot.normal}
-                    </span>
-                    {task.emoji && (
-                      <span className="badge" title={emojiHint ?? task.emoji}>
-                        {task.emoji}
+                    <div className="card-controls-grid">
+                      <span className="priority-indicator" title={`Приоритет: ${task.priority}`}>
+                        {priorityDot[task.priority] ?? priorityDot.normal}
                       </span>
-                    )}
-                    <button
-                      className="card-expand-btn"
-                      draggable
-                      onClick={(e) => e.stopPropagation()}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('taskId', String(task.id));
-                      }}
-                      aria-label="Перетащить задачу"
-                      title="Перетащить"
-                    >
-                      ⠿
-                    </button>
+                      <button
+                        className="card-expand-btn"
+                        draggable
+                        onClick={(e) => e.stopPropagation()}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('taskId', String(task.id));
+                        }}
+                        aria-label="Перетащить задачу"
+                        title="Перетащить"
+                      >
+                        ⠿
+                      </button>
+                      {task.emoji ? (
+                        <span className="badge card-emoji-badge" title={emojiHint ?? task.emoji}>
+                          {task.emoji}
+                        </span>
+                      ) : (
+                        <span className="card-emoji-placeholder" aria-hidden="true" />
+                      )}
+                      <button
+                        className="card-expand-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedTaskId((prev) => (prev === task.id ? null : task.id));
+                        }}
+                        aria-label={expandedTaskId === task.id ? 'Свернуть карточку' : 'Развернуть карточку'}
+                      >
+                        {expandedTaskId === task.id ? '▴' : '▾'}
+                      </button>
+                    </div>
                     {tags.slice(0, 2).map((tag) => (
                       <span key={tag.id} className="tag-chip" style={{ borderColor: tag.color, color: tag.color }}>
                         {tag.name}
                       </span>
                     ))}
-                    <button
-                      className="card-expand-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedTaskId((prev) => (prev === task.id ? null : task.id));
-                      }}
-                      aria-label={expandedTaskId === task.id ? 'Свернуть карточку' : 'Развернуть карточку'}
-                    >
-                      {expandedTaskId === task.id ? '▴' : '▾'}
-                    </button>
                   </div>
                 </div>
                 <div className="card-details">
