@@ -432,6 +432,7 @@ export default function App() {
               await patchTag(tagId, { name, color });
               await refreshBoardData();
             }}
+            onBackupImported={refreshBoardData}
           />
         )}
       </div>

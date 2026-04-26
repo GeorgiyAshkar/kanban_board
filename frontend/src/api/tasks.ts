@@ -5,6 +5,7 @@ import type {
   HistoryItem,
   Task,
   TaskComment,
+  TaskPriority,
   TaskReminder,
   TodayResponse,
 } from '../types/task';
@@ -159,6 +160,58 @@ export interface BoardFilters {
   dateTo?: string;
 }
 
+export interface BackupMetadata {
+  exported_at: string;
+  app_version: string;
+  task_count: number;
+  column_count: number;
+  tag_count: number;
+}
+
+export interface BackupTaskItem {
+  title: string;
+  description: string;
+  status: string;
+  priority: TaskPriority;
+  deadline_at?: string | null;
+  planned_return_at?: string | null;
+  position: number;
+  board_column_name?: string | null;
+  project_id?: string | null;
+  color_mark?: string | null;
+  estimate_minutes?: number | null;
+  spent_minutes?: number | null;
+  assignee_last_name?: string | null;
+  assignee_first_name?: string | null;
+  assignee_middle_name?: string | null;
+  assignee_phone?: string | null;
+  assignee_email?: string | null;
+  assignee_org?: string | null;
+  emoji?: string | null;
+  is_done: boolean;
+  is_archived: boolean;
+  done_at?: string | null;
+  tags: string[];
+}
+
+export interface BackupPayload {
+  version: string;
+  metadata: BackupMetadata;
+  columns: BoardColumn[];
+  tags: Tag[];
+  tasks: BackupTaskItem[];
+}
+
+export interface BackupImportResponse {
+  dry_run: boolean;
+  tasks_to_import: number;
+  tags_to_create: number;
+  columns_to_create: number;
+  created_tasks: number;
+  created_tags: number;
+  created_columns: number;
+}
+
 export const fetchTags = async (): Promise<Tag[]> => {
   const { data } = await api.get<Tag[]>('/tags');
   return data;
@@ -243,5 +296,25 @@ export const createColumn = async (name: string, position: number): Promise<Boar
 
 export const patchColumn = async (columnId: number, payload: Partial<BoardColumn>): Promise<BoardColumn> => {
   const { data } = await api.patch<BoardColumn>(`/columns/${columnId}`, payload);
+  return data;
+};
+
+export const fetchBackupJson = async (): Promise<BackupPayload> => {
+  const { data } = await api.get<BackupPayload>('/backup/export.json');
+  return data;
+};
+
+export const downloadBackupCsv = async (): Promise<Blob> => {
+  const { data } = await api.get('/backup/export.csv', { responseType: 'blob' });
+  return data as Blob;
+};
+
+export const downloadBackupArchive = async (): Promise<Blob> => {
+  const { data } = await api.get('/backup/archive', { responseType: 'blob' });
+  return data as Blob;
+};
+
+export const importBackup = async (backup: BackupPayload, dryRun = true): Promise<BackupImportResponse> => {
+  const { data } = await api.post<BackupImportResponse>('/backup/import', { backup, dry_run: dryRun });
   return data;
 };

@@ -209,3 +209,28 @@ def test_board_filters_by_tags_dates_assignee_column_and_completion(client: Test
     payload = board.json()
     assert payload['total'] >= 1
     assert any(item['id'] == target_id for item in payload['tasks'])
+
+
+def test_backup_export_and_import_dry_run(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Backup me', 'description': 'snapshot', 'priority': 'normal'})
+    assert created.status_code == 201
+
+    exported = client.get('/backup/export.json')
+    assert exported.status_code == 200
+    payload = exported.json()
+    assert payload['metadata']['task_count'] >= 1
+    assert any(item['title'] == 'Backup me' for item in payload['tasks'])
+
+    csv_export = client.get('/backup/export.csv')
+    assert csv_export.status_code == 200
+    assert 'text/csv' in csv_export.headers.get('content-type', '')
+
+    archive_export = client.get('/backup/archive')
+    assert archive_export.status_code == 200
+    assert 'application/zip' in archive_export.headers.get('content-type', '')
+
+    dry_run_import = client.post('/backup/import', json={'backup': payload, 'dry_run': True})
+    assert dry_run_import.status_code == 200
+    import_payload = dry_run_import.json()
+    assert import_payload['dry_run'] is True
+    assert import_payload['tasks_to_import'] >= 1
