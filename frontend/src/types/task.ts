@@ -15,6 +15,10 @@ export interface Task {
   done_at: string | null;
   board_column_id: number | null;
   position: number;
+  project_id?: string | null;
+  color_mark?: string | null;
+  estimate_minutes?: number | null;
+  spent_minutes?: number | null;
   assignee_last_name?: string | null;
   assignee_first_name?: string | null;
   assignee_middle_name?: string | null;
