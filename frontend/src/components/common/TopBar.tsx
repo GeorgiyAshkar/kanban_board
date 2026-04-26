@@ -19,7 +19,7 @@ interface Props {
   onApplySavedFilter: (filterId: string) => void;
   onSaveCurrentFilter: (name: string) => void;
   onDeleteSavedFilter: (filterId: string) => void;
-  setPage: (page: 'board' | 'today' | 'history' | 'archive' | 'settings') => void;
+  setPage: (page: 'board' | 'today' | 'history' | 'archive' | 'reports' | 'settings') => void;
   onCreateTask: () => void;
 }
 
@@ -44,6 +44,7 @@ export function TopBar({
       <button onClick={() => setPage('today')}>Сегодня</button>
       <button onClick={() => setPage('history')}>История</button>
       <button onClick={() => setPage('archive')}>Архив</button>
+      <button onClick={() => setPage('reports')}>Отчеты</button>
       <button onClick={() => setPage('settings')}>⚙</button>
       <button className="small-btn top-create" onClick={onCreateTask}>+ Новая задача</button>
       <div className="search">

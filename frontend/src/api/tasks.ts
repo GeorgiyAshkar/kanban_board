@@ -37,6 +37,35 @@ export interface ReminderNotificationEvent {
   dispatched_at?: string | null;
 }
 
+export interface AnalyticsTrendPoint {
+  period_start: string;
+  period_end: string;
+  completed_tasks: number;
+  created_tasks: number;
+  overdue_open_tasks: number;
+  wip_open_tasks: number;
+  avg_lead_time_hours?: number | null;
+  avg_cycle_time_hours?: number | null;
+}
+
+export interface AnalyticsSummary {
+  window_start: string;
+  window_end: string;
+  total_tasks: number;
+  created_tasks: number;
+  completed_tasks: number;
+  overdue_open_tasks: number;
+  wip_open_tasks: number;
+  velocity_per_period: number;
+  avg_lead_time_hours?: number | null;
+  avg_cycle_time_hours?: number | null;
+}
+
+export interface AnalyticsReport {
+  summary: AnalyticsSummary;
+  trend: AnalyticsTrendPoint[];
+}
+
 export const fetchTasks = async (): Promise<Task[]> => {
   const { data } = await api.get<Task[]>('/tasks?archived=false&limit=200');
   return data;
@@ -243,5 +272,13 @@ export const createColumn = async (name: string, position: number): Promise<Boar
 
 export const patchColumn = async (columnId: number, payload: Partial<BoardColumn>): Promise<BoardColumn> => {
   const { data } = await api.patch<BoardColumn>(`/columns/${columnId}`, payload);
+  return data;
+};
+
+export const fetchAnalyticsReport = async (
+  days = 30,
+  bucket: 'day' | 'week' = 'week',
+): Promise<AnalyticsReport> => {
+  const { data } = await api.get<AnalyticsReport>('/analytics/report', { params: { days, bucket } });
   return data;
 };

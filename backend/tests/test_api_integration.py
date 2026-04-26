@@ -209,3 +209,19 @@ def test_board_filters_by_tags_dates_assignee_column_and_completion(client: Test
     payload = board.json()
     assert payload['total'] >= 1
     assert any(item['id'] == target_id for item in payload['tasks'])
+
+
+def test_analytics_report_contains_summary_and_trends(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Analytics seed', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task_id = created.json()['id']
+    completed = client.post(f'/tasks/{task_id}/complete')
+    assert completed.status_code == 200
+
+    response = client.get('/analytics/report', params={'days': 30, 'bucket': 'week'})
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'summary' in payload
+    assert 'trend' in payload
+    assert payload['summary']['completed_tasks'] >= 1
+    assert isinstance(payload['trend'], list)
