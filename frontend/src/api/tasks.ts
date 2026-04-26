@@ -5,6 +5,7 @@ import type {
   HistoryItem,
   Task,
   TaskComment,
+  TaskPriority,
   TaskReminder,
   TodayResponse,
 } from '../types/task';
@@ -146,6 +147,71 @@ export interface BoardTaskMetadata {
   checklist: ChecklistItem[];
 }
 
+export type TaskDateField = 'deadline_at' | 'planned_return_at' | 'created_at' | 'updated_at' | 'done_at';
+
+export interface BoardFilters {
+  archiveScope: 'active' | 'archived' | 'all';
+  completedScope: 'all' | 'open' | 'completed';
+  tagIds: number[];
+  columnIds: number[];
+  assignee: string;
+  dateField: TaskDateField;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface BackupMetadata {
+  exported_at: string;
+  app_version: string;
+  task_count: number;
+  column_count: number;
+  tag_count: number;
+}
+
+export interface BackupTaskItem {
+  title: string;
+  description: string;
+  status: string;
+  priority: TaskPriority;
+  deadline_at?: string | null;
+  planned_return_at?: string | null;
+  position: number;
+  board_column_name?: string | null;
+  project_id?: string | null;
+  color_mark?: string | null;
+  estimate_minutes?: number | null;
+  spent_minutes?: number | null;
+  assignee_last_name?: string | null;
+  assignee_first_name?: string | null;
+  assignee_middle_name?: string | null;
+  assignee_phone?: string | null;
+  assignee_email?: string | null;
+  assignee_org?: string | null;
+  emoji?: string | null;
+  is_done: boolean;
+  is_archived: boolean;
+  done_at?: string | null;
+  tags: string[];
+}
+
+export interface BackupPayload {
+  version: string;
+  metadata: BackupMetadata;
+  columns: BoardColumn[];
+  tags: Tag[];
+  tasks: BackupTaskItem[];
+}
+
+export interface BackupImportResponse {
+  dry_run: boolean;
+  tasks_to_import: number;
+  tags_to_create: number;
+  columns_to_create: number;
+  created_tasks: number;
+  created_tags: number;
+  created_columns: number;
+}
+
 export const fetchTags = async (): Promise<Tag[]> => {
   const { data } = await api.get<Tag[]>('/tags');
   return data;
@@ -175,9 +241,26 @@ export const fetchBoardMetadata = async (taskIds: number[]): Promise<BoardTaskMe
   return data;
 };
 
-export const fetchBoardData = async (query?: string): Promise<PaginatedBoardResponse> => {
+export const fetchBoardData = async (query?: string, filters?: BoardFilters): Promise<PaginatedBoardResponse> => {
+  const archived =
+    filters?.archiveScope === 'all' ? undefined : filters?.archiveScope === 'archived';
+  const isDone =
+    filters?.completedScope === 'all' ? undefined : filters?.completedScope === 'completed';
   const { data } = await api.get<PaginatedBoardResponse>('/tasks/board', {
-    params: { archived: false, q: query || undefined, limit: 200, offset: 0 },
+    params: {
+      archived,
+      is_done: isDone,
+      q: query || undefined,
+      tag_ids: filters?.tagIds?.length ? filters.tagIds : undefined,
+      board_column_ids: filters?.columnIds?.length ? filters.columnIds : undefined,
+      assignee: filters?.assignee?.trim() || undefined,
+      date_field: filters?.dateField || undefined,
+      date_from: filters?.dateFrom || undefined,
+      date_to: filters?.dateTo || undefined,
+      limit: 200,
+      offset: 0,
+    },
+    paramsSerializer: { indexes: null },
   });
   return data;
 };
@@ -213,5 +296,25 @@ export const createColumn = async (name: string, position: number): Promise<Boar
 
 export const patchColumn = async (columnId: number, payload: Partial<BoardColumn>): Promise<BoardColumn> => {
   const { data } = await api.patch<BoardColumn>(`/columns/${columnId}`, payload);
+  return data;
+};
+
+export const fetchBackupJson = async (): Promise<BackupPayload> => {
+  const { data } = await api.get<BackupPayload>('/backup/export.json');
+  return data;
+};
+
+export const downloadBackupCsv = async (): Promise<Blob> => {
+  const { data } = await api.get('/backup/export.csv', { responseType: 'blob' });
+  return data as Blob;
+};
+
+export const downloadBackupArchive = async (): Promise<Blob> => {
+  const { data } = await api.get('/backup/archive', { responseType: 'blob' });
+  return data as Blob;
+};
+
+export const importBackup = async (backup: BackupPayload, dryRun = true): Promise<BackupImportResponse> => {
+  const { data } = await api.post<BackupImportResponse>('/backup/import', { backup, dry_run: dryRun });
   return data;
 };

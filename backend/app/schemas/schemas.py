@@ -245,6 +245,63 @@ class BoardResponse(BaseModel):
     offset: int
 
 
+class BackupMetadata(BaseModel):
+    exported_at: datetime
+    app_version: str
+    task_count: int
+    column_count: int
+    tag_count: int
+
+
+class BackupTaskItem(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str = ""
+    status: str = "inbox"
+    priority: TaskPriority = TaskPriority.NORMAL
+    deadline_at: Optional[datetime] = None
+    planned_return_at: Optional[datetime] = None
+    position: int = 0
+    board_column_name: Optional[str] = None
+    project_id: Optional[str] = None
+    color_mark: Optional[str] = None
+    estimate_minutes: Optional[int] = None
+    spent_minutes: Optional[int] = None
+    assignee_last_name: Optional[str] = None
+    assignee_first_name: Optional[str] = None
+    assignee_middle_name: Optional[str] = None
+    assignee_phone: Optional[str] = None
+    assignee_email: Optional[str] = None
+    assignee_org: Optional[str] = None
+    emoji: Optional[str] = None
+    is_done: bool = False
+    is_archived: bool = False
+    done_at: Optional[datetime] = None
+    tags: list[str] = Field(default_factory=list)
+
+
+class BackupPayload(BaseModel):
+    version: str = "1.0"
+    metadata: BackupMetadata
+    columns: list[ColumnRead]
+    tags: list[TagRead]
+    tasks: list[BackupTaskItem]
+
+
+class BackupImportRequest(BaseModel):
+    backup: BackupPayload
+    dry_run: bool = True
+
+
+class BackupImportResponse(BaseModel):
+    dry_run: bool
+    tasks_to_import: int
+    tags_to_create: int
+    columns_to_create: int
+    created_tasks: int = 0
+    created_tags: int = 0
+    created_columns: int = 0
+
+
 class ReminderNotificationRead(BaseModel):
     id: int
     reminder_id: int

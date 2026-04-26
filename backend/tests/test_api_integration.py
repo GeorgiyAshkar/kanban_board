@@ -143,3 +143,94 @@ def test_board_and_task_details_aggregates_and_notification_delivery(client: Tes
     ack = client.post(f\"/notifications/events/{event['id']}/ack\")
     assert ack.status_code == 200
     assert ack.json()['status'] == 'acknowledged'
+
+
+def test_board_filters_by_tags_dates_assignee_column_and_completion(client: TestClient) -> None:
+    columns = client.get('/columns').json()
+    target_column = columns[0]
+
+    target = client.post(
+        '/tasks',
+        json={
+            'title': 'Target task',
+            'description': 'with extra filters',
+            'board_column_id': target_column['id'],
+            'status': target_column['canonical_status'],
+            'priority': 'normal',
+            'assignee_first_name': 'Alice',
+            'assignee_last_name': 'Cooper',
+            'assignee_email': 'alice@example.com',
+            'deadline_at': '2030-01-15T10:00:00Z',
+        },
+    )
+    assert target.status_code == 201
+    target_id = target.json()['id']
+
+    other = client.post(
+        '/tasks',
+        json={
+            'title': 'Other task',
+            'description': '',
+            'board_column_id': target_column['id'],
+            'status': target_column['canonical_status'],
+            'priority': 'normal',
+            'assignee_first_name': 'Bob',
+            'deadline_at': '2030-03-01T10:00:00Z',
+        },
+    )
+    assert other.status_code == 201
+
+    tag_urgent = client.post('/tags', json={'name': f'urgent-{target_id}', 'color': '#ff0000'})
+    assert tag_urgent.status_code == 201
+    tag_team = client.post('/tags', json={'name': f'team-{target_id}', 'color': '#00ff00'})
+    assert tag_team.status_code == 201
+    urgent_id = tag_urgent.json()['id']
+    team_id = tag_team.json()['id']
+
+    assert client.post(f'/tasks/{target_id}/tags', json={'tag_id': urgent_id}).status_code == 201
+    assert client.post(f'/tasks/{target_id}/tags', json={'tag_id': team_id}).status_code == 201
+    assert client.post(f'/tasks/{target_id}/complete').status_code == 200
+
+    board = client.get(
+        '/tasks/board',
+        params=[
+            ('archived', 'false'),
+            ('is_done', 'true'),
+            ('assignee', 'alice'),
+            ('date_field', 'deadline_at'),
+            ('date_from', '2030-01-01'),
+            ('date_to', '2030-01-31'),
+            ('board_column_ids', target_column['id']),
+            ('tag_ids', urgent_id),
+            ('tag_ids', team_id),
+        ],
+    )
+    assert board.status_code == 200
+    payload = board.json()
+    assert payload['total'] >= 1
+    assert any(item['id'] == target_id for item in payload['tasks'])
+
+
+def test_backup_export_and_import_dry_run(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Backup me', 'description': 'snapshot', 'priority': 'normal'})
+    assert created.status_code == 201
+
+    exported = client.get('/backup/export.json')
+    assert exported.status_code == 200
+    payload = exported.json()
+    assert payload['metadata']['task_count'] >= 1
+    assert any(item['title'] == 'Backup me' for item in payload['tasks'])
+
+    csv_export = client.get('/backup/export.csv')
+    assert csv_export.status_code == 200
+    assert 'text/csv' in csv_export.headers.get('content-type', '')
+
+    archive_export = client.get('/backup/archive')
+    assert archive_export.status_code == 200
+    assert 'application/zip' in archive_export.headers.get('content-type', '')
+
+    dry_run_import = client.post('/backup/import', json={'backup': payload, 'dry_run': True})
+    assert dry_run_import.status_code == 200
+    import_payload = dry_run_import.json()
+    assert import_payload['dry_run'] is True
+    assert import_payload['tasks_to_import'] >= 1
