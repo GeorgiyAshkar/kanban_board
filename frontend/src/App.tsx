@@ -24,9 +24,10 @@ import {
   pullReminderNotificationEvents,
   removeTaskTag,
   restoreTask,
+  type BoardFilters,
   type Tag,
 } from './api/tasks';
-import { TopBar } from './components/common/TopBar';
+import { TopBar, type SavedBoardFilter } from './components/common/TopBar';
 import { NewTaskModal } from './components/common/NewTaskModal';
 import { BoardPage } from './pages/BoardPage';
 import { HistoryPage } from './pages/HistoryPage';
@@ -39,16 +40,39 @@ import './styles.css';
 import fontConfig from './font_config.json';
 
 type Page = 'board' | 'today' | 'history' | 'archive' | 'settings';
+const SAVED_FILTERS_KEY = 'kanban.saved-filters.v1';
+
+const defaultBoardFilters: BoardFilters = {
+  archiveScope: 'active',
+  completedScope: 'all',
+  tagIds: [],
+  columnIds: [],
+  assignee: '',
+  dateField: 'deadline_at',
+};
 
 export default function App() {
   const [page, setPage] = useState<Page>('board');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [taskTagsByTaskId, setTaskTagsByTaskId] = useState<Record<number, Tag[]>>({});
   const [taskChecklistByTaskId, setTaskChecklistByTaskId] = useState<Record<number, ChecklistItem[]>>({});
+  const [filters, setFilters] = useState<BoardFilters>(defaultBoardFilters);
+  const [savedFilters, setSavedFilters] = useState<SavedBoardFilter[]>(() => {
+    const raw = window.localStorage.getItem(SAVED_FILTERS_KEY);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw) as SavedBoardFilter[];
+    } catch {
+      return [];
+    }
+  });
   const queryClient = useQueryClient();
   const { query, setQuery, activeTaskId, setActiveTaskId } = useUIStore();
 
-  const boardQuery = useQuery({ queryKey: ['board', query], queryFn: () => fetchBoardData(query) });
+  const boardQuery = useQuery({
+    queryKey: ['board', query, filters],
+    queryFn: () => fetchBoardData(query, filters),
+  });
   const archivedQuery = useQuery({ queryKey: ['tasks', 'archived'], queryFn: fetchArchivedTasks });
   const historyQuery = useQuery({ queryKey: ['history'], queryFn: fetchHistory });
   const todayQuery = useQuery({ queryKey: ['today'], queryFn: fetchToday });
@@ -59,6 +83,10 @@ export default function App() {
     queryFn: () => fetchTaskDetails(activeTaskId!),
     enabled: Boolean(activeTaskId),
   });
+
+  useEffect(() => {
+    window.localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(savedFilters));
+  }, [savedFilters]);
 
   useEffect(() => {
     const metadata = boardQuery.data?.metadata ?? [];
@@ -123,7 +151,32 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TopBar query={query} onQueryChange={setQuery} setPage={setPage} onCreateTask={handleCreateTask} />
+      <TopBar
+        query={query}
+        onQueryChange={setQuery}
+        filters={filters}
+        onFiltersChange={setFilters}
+        tags={tagsQuery.data ?? []}
+        columns={boardQuery.data?.columns ?? []}
+        savedFilters={savedFilters}
+        onApplySavedFilter={(filterId) => {
+          const selected = savedFilters.find((item) => item.id === filterId);
+          if (!selected) return;
+          setQuery(selected.query);
+          setFilters(selected.filters);
+        }}
+        onSaveCurrentFilter={(name) => {
+          setSavedFilters((prev) => [
+            { id: `${Date.now()}`, name, query, filters: { ...filters } },
+            ...prev,
+          ]);
+        }}
+        onDeleteSavedFilter={(filterId) => {
+          setSavedFilters((prev) => prev.filter((item) => item.id !== filterId));
+        }}
+        setPage={setPage}
+        onCreateTask={handleCreateTask}
+      />
       <NewTaskModal
         open={isCreateOpen}
         columns={boardQuery.data?.columns ?? []}

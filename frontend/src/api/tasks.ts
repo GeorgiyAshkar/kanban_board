@@ -146,6 +146,19 @@ export interface BoardTaskMetadata {
   checklist: ChecklistItem[];
 }
 
+export type TaskDateField = 'deadline_at' | 'planned_return_at' | 'created_at' | 'updated_at' | 'done_at';
+
+export interface BoardFilters {
+  archiveScope: 'active' | 'archived' | 'all';
+  completedScope: 'all' | 'open' | 'completed';
+  tagIds: number[];
+  columnIds: number[];
+  assignee: string;
+  dateField: TaskDateField;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export const fetchTags = async (): Promise<Tag[]> => {
   const { data } = await api.get<Tag[]>('/tags');
   return data;
@@ -175,9 +188,26 @@ export const fetchBoardMetadata = async (taskIds: number[]): Promise<BoardTaskMe
   return data;
 };
 
-export const fetchBoardData = async (query?: string): Promise<PaginatedBoardResponse> => {
+export const fetchBoardData = async (query?: string, filters?: BoardFilters): Promise<PaginatedBoardResponse> => {
+  const archived =
+    filters?.archiveScope === 'all' ? undefined : filters?.archiveScope === 'archived';
+  const isDone =
+    filters?.completedScope === 'all' ? undefined : filters?.completedScope === 'completed';
   const { data } = await api.get<PaginatedBoardResponse>('/tasks/board', {
-    params: { archived: false, q: query || undefined, limit: 200, offset: 0 },
+    params: {
+      archived,
+      is_done: isDone,
+      q: query || undefined,
+      tag_ids: filters?.tagIds?.length ? filters.tagIds : undefined,
+      board_column_ids: filters?.columnIds?.length ? filters.columnIds : undefined,
+      assignee: filters?.assignee?.trim() || undefined,
+      date_field: filters?.dateField || undefined,
+      date_from: filters?.dateFrom || undefined,
+      date_to: filters?.dateTo || undefined,
+      limit: 200,
+      offset: 0,
+    },
+    paramsSerializer: { indexes: null },
   });
   return data;
 };

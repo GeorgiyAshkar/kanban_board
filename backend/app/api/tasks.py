@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
@@ -42,19 +42,55 @@ def _build_task_filters(
     stmt,
     *,
     archived: bool | None,
+    is_done: bool | None,
     status_filter: str | None,
     priority: str | None,
     board_column_id: int | None,
+    board_column_ids: list[int] | None,
+    assignee: str | None,
+    date_field: str | None,
+    date_from: date | None,
+    date_to: date | None,
+    tag_ids: list[int] | None,
     q: str | None,
 ):
     if archived is not None:
         stmt = stmt.where(Task.is_archived == archived)
+    if is_done is not None:
+        stmt = stmt.where(Task.is_done == is_done)
     if status_filter:
         stmt = stmt.where(Task.status == status_filter)
     if priority:
         stmt = stmt.where(Task.priority == priority)
     if board_column_id is not None:
         stmt = stmt.where(Task.board_column_id == board_column_id)
+    if board_column_ids:
+        stmt = stmt.where(Task.board_column_id.in_(board_column_ids))
+    if assignee:
+        assignee_like = f"%{assignee.strip()}%"
+        stmt = stmt.where(
+            or_(
+                Task.assignee_last_name.ilike(assignee_like),
+                Task.assignee_first_name.ilike(assignee_like),
+                Task.assignee_middle_name.ilike(assignee_like),
+                Task.assignee_email.ilike(assignee_like),
+                Task.assignee_org.ilike(assignee_like),
+            )
+        )
+    if date_field in {"deadline_at", "planned_return_at", "created_at", "updated_at", "done_at"}:
+        column = getattr(Task, date_field)
+        if date_from:
+            stmt = stmt.where(column >= datetime.combine(date_from, time.min))
+        if date_to:
+            stmt = stmt.where(column <= datetime.combine(date_to, time.max))
+    if tag_ids:
+        tag_filter_subquery = (
+            select(TaskTag.task_id)
+            .where(TaskTag.tag_id.in_(tag_ids))
+            .group_by(TaskTag.task_id)
+            .having(func.count(func.distinct(TaskTag.tag_id)) == len(set(tag_ids)))
+        )
+        stmt = stmt.where(Task.id.in_(tag_filter_subquery))
     if q:
         like = f"%{q.strip()}%"
         tag_subquery = (
@@ -68,6 +104,11 @@ def _build_task_filters(
             or_(
                 Task.title.ilike(like),
                 Task.description.ilike(like),
+                Task.assignee_last_name.ilike(like),
+                Task.assignee_first_name.ilike(like),
+                Task.assignee_middle_name.ilike(like),
+                Task.assignee_email.ilike(like),
+                Task.assignee_org.ilike(like),
                 Task.id.in_(select(tag_subquery.c.task_id)),
                 Task.id.in_(select(comment_subquery.c.task_id)),
             )
@@ -79,9 +120,16 @@ def _build_task_filters(
 def list_tasks(
     q: str | None = None,
     archived: bool | None = None,
+    is_done: bool | None = None,
     status_filter: str | None = Query(default=None, alias="status"),
     priority: str | None = None,
     board_column_id: int | None = None,
+    board_column_ids: list[int] = Query(default=[]),
+    assignee: str | None = None,
+    date_field: str | None = Query(default=None, pattern="^(deadline_at|planned_return_at|created_at|updated_at|done_at)$"),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    tag_ids: list[int] = Query(default=[]),
     limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -90,9 +138,16 @@ def list_tasks(
     stmt = _build_task_filters(
         stmt,
         archived=archived,
+        is_done=is_done,
         status_filter=status_filter,
         priority=priority,
         board_column_id=board_column_id,
+        board_column_ids=board_column_ids,
+        assignee=assignee,
+        date_field=date_field,
+        date_from=date_from,
+        date_to=date_to,
+        tag_ids=tag_ids,
         q=q,
     )
     stmt = stmt.order_by(Task.board_column_id, Task.position, Task.id)
@@ -104,9 +159,16 @@ def list_tasks(
 def board_view(
     q: str | None = None,
     archived: bool | None = False,
+    is_done: bool | None = None,
     status_filter: str | None = Query(default=None, alias="status"),
     priority: str | None = None,
     board_column_id: int | None = None,
+    board_column_ids: list[int] = Query(default=[]),
+    assignee: str | None = None,
+    date_field: str | None = Query(default=None, pattern="^(deadline_at|planned_return_at|created_at|updated_at|done_at)$"),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    tag_ids: list[int] = Query(default=[]),
     limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -114,9 +176,16 @@ def board_view(
     base_stmt = _build_task_filters(
         select(Task),
         archived=archived,
+        is_done=is_done,
         status_filter=status_filter,
         priority=priority,
         board_column_id=board_column_id,
+        board_column_ids=board_column_ids,
+        assignee=assignee,
+        date_field=date_field,
+        date_from=date_from,
+        date_to=date_to,
+        tag_ids=tag_ids,
         q=q,
     )
     total = db.scalar(select(func.count()).select_from(base_stmt.subquery())) or 0
