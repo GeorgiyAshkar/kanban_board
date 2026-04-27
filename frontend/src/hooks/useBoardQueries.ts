@@ -1,22 +1,37 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  fetchAnalyticsReport,
   fetchArchivedTasks,
   fetchBoardData,
   fetchHistory,
   fetchTags,
   fetchTaskDetails,
   fetchToday,
+  type BoardFilters,
   type Tag,
 } from '../api/tasks';
 import type { ChecklistItem } from '../types/task';
 
-export const useBoardQueries = (query: string, activeTaskId: number | null) => {
-  const boardQuery = useQuery({ queryKey: ['board', query], queryFn: () => fetchBoardData(query) });
+export const useBoardQueries = (
+  query: string,
+  activeTaskId: number | null,
+  filters: BoardFilters,
+  reportDays: number,
+  reportBucket: 'day' | 'week',
+) => {
+  const boardQuery = useQuery({
+    queryKey: ['board', query, filters],
+    queryFn: () => fetchBoardData(query, filters),
+  });
   const archivedQuery = useQuery({ queryKey: ['tasks', 'archived'], queryFn: fetchArchivedTasks });
   const historyQuery = useQuery({ queryKey: ['history'], queryFn: fetchHistory });
   const todayQuery = useQuery({ queryKey: ['today'], queryFn: fetchToday });
   const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: fetchTags });
+  const analyticsQuery = useQuery({
+    queryKey: ['analytics', reportDays, reportBucket],
+    queryFn: () => fetchAnalyticsReport(reportDays, reportBucket),
+  });
 
   const taskDetailsQuery = useQuery({
     queryKey: ['task-details', activeTaskId],
@@ -44,6 +59,7 @@ export const useBoardQueries = (query: string, activeTaskId: number | null) => {
     historyQuery,
     todayQuery,
     tagsQuery,
+    analyticsQuery,
     taskDetailsQuery,
     taskTagsByTaskId,
     taskChecklistByTaskId,
