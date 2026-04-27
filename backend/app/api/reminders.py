@@ -10,6 +10,7 @@ from app.db.database import get_db
 from app.models.models import Task, TaskReminder
 from app.schemas.schemas import ReminderCreate, ReminderPatch, ReminderRead
 from app.services.history import log_history
+from app.services.tasks import touch_task
 
 router = APIRouter(tags=["reminders"])
 
@@ -28,7 +29,7 @@ def add_reminder(task_id: int, payload: ReminderCreate, db: Session = Depends(ge
 
     reminder = TaskReminder(task_id=task_id, **payload.model_dump())
     db.add(reminder)
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     log_history(db, task_id=task_id, action_type="reminder_added", new_value=payload.remind_at.isoformat())
     db.commit()
     db.refresh(reminder)
@@ -49,6 +50,10 @@ def patch_reminder(reminder_id: int, payload: ReminderPatch, db: Session = Depen
     if reminder.is_completed and reminder.completed_at is None:
         reminder.completed_at = datetime.utcnow()
 
+    task = db.get(Task, reminder.task_id)
+    if task:
+        touch_task(task)
+
     log_history(db, task_id=reminder.task_id, action_type="reminder_updated", old_value=old_snapshot, new_value=str(update_data))
     db.commit()
     db.refresh(reminder)
@@ -62,6 +67,9 @@ def delete_reminder(reminder_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Reminder not found")
 
     log_history(db, task_id=reminder.task_id, action_type="reminder_deleted", old_value=reminder.remind_at.isoformat())
+    task = db.get(Task, reminder.task_id)
+    if task:
+        touch_task(task)
     db.delete(reminder)
     db.commit()
 
@@ -74,6 +82,9 @@ def complete_reminder(reminder_id: int, db: Session = Depends(get_db)):
 
     reminder.is_completed = True
     reminder.completed_at = datetime.utcnow()
+    task = db.get(Task, reminder.task_id)
+    if task:
+        touch_task(task)
     log_history(db, task_id=reminder.task_id, action_type="reminder_completed")
     db.commit()
     db.refresh(reminder)

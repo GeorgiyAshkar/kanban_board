@@ -8,7 +8,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -167,6 +167,7 @@ def export_archive(db: Session = Depends(get_db)):
 @router.post("/import", response_model=BackupImportResponse)
 def import_backup(payload: BackupImportRequest, db: Session = Depends(get_db)):
     backup = payload.backup
+    mode = payload.mode
 
     known_columns = {item.name for item in db.scalars(select(BoardColumn)).all()}
     known_tags = {item.name for item in db.scalars(select(Tag)).all()}
@@ -187,10 +188,20 @@ def import_backup(payload: BackupImportRequest, db: Session = Depends(get_db)):
     if payload.dry_run:
         return BackupImportResponse(
             dry_run=True,
+            mode=mode,
             tasks_to_import=len(backup.tasks),
             tags_to_create=len(tags_to_create),
             columns_to_create=len(columns_to_create),
         )
+
+    if mode == "replace_all":
+        db.execute(delete(TaskTag))
+        db.execute(delete(Task))
+        db.execute(delete(Tag))
+        db.execute(delete(BoardColumn))
+        db.flush()
+        columns_to_create = backup.columns
+        tags_to_create = backup.tags
 
     for column in columns_to_create:
         db.add(
@@ -199,6 +210,8 @@ def import_backup(payload: BackupImportRequest, db: Session = Depends(get_db)):
                 canonical_status=column.canonical_status,
                 position=column.position,
                 color=column.color,
+                wip_limit=column.wip_limit,
+                sla_hours=column.sla_hours,
                 is_system=column.is_system,
             )
         )
@@ -236,6 +249,7 @@ def import_backup(payload: BackupImportRequest, db: Session = Depends(get_db)):
             is_done=task.is_done,
             is_archived=task.is_archived,
             done_at=task.done_at,
+            row_version=1,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -250,6 +264,7 @@ def import_backup(payload: BackupImportRequest, db: Session = Depends(get_db)):
     db.commit()
     return BackupImportResponse(
         dry_run=False,
+        mode=mode,
         tasks_to_import=len(backup.tasks),
         tags_to_create=len(tags_to_create),
         columns_to_create=len(columns_to_create),
