@@ -66,6 +66,44 @@ export interface AnalyticsReport {
   trend: AnalyticsTrendPoint[];
 }
 
+export interface BackupMetadata {
+  exported_at: string;
+  app_version: string;
+  task_count: number;
+  column_count: number;
+  tag_count: number;
+}
+
+export interface BackupTaskItem {
+  title: string;
+  description: string;
+  status: string;
+  priority: Task['priority'];
+  deadline_at?: string | null;
+  planned_return_at?: string | null;
+  position: number;
+  board_column_name?: string | null;
+  tags: string[];
+}
+
+export interface BackupPayload {
+  metadata: BackupMetadata;
+  columns: BoardColumn[];
+  tags: Tag[];
+  tasks: BackupTaskItem[];
+}
+
+export interface BackupImportResponse {
+  dry_run: boolean;
+  mode: 'merge' | 'replace_all';
+  tasks_to_import: number;
+  tags_to_create: number;
+  columns_to_create: number;
+  created_tasks: number;
+  created_tags: number;
+  created_columns: number;
+}
+
 export const fetchTasks = async (): Promise<Task[]> => {
   const { data } = await api.get<Task[]>('/tasks?archived=false&limit=200');
   return data;
@@ -280,5 +318,59 @@ export const fetchAnalyticsReport = async (
   bucket: 'day' | 'week' = 'week',
 ): Promise<AnalyticsReport> => {
   const { data } = await api.get<AnalyticsReport>('/analytics/report', { params: { days, bucket } });
+  return data;
+};
+
+const backupEndpointMap = {
+  json: '/backup/export.json',
+  csv: '/backup/export.csv',
+  archive: '/backup/archive',
+} as const;
+
+const fallbackFileName = (kind: 'json' | 'csv' | 'archive') => {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  if (kind === 'json') return `kanban_backup_${stamp}.json`;
+  if (kind === 'csv') return `kanban_tasks_${stamp}.csv`;
+  return `kanban_backup_${stamp}.zip`;
+};
+
+const extractFileName = (contentDisposition: string | undefined, kind: 'json' | 'csv' | 'archive') => {
+  if (!contentDisposition) return fallbackFileName(kind);
+  const match = /filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i.exec(contentDisposition);
+  const encoded = match?.[1] ?? match?.[2];
+  if (!encoded) return fallbackFileName(kind);
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return encoded;
+  }
+};
+
+export const downloadBackup = async (kind: 'json' | 'csv' | 'archive'): Promise<void> => {
+  const response = await api.get<Blob>(backupEndpointMap[kind], { responseType: 'blob' });
+  const filename = extractFileName(response.headers['content-disposition'], kind);
+  const blob = response.data as unknown as Blob;
+  const objectUrl = window.URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    window.URL.revokeObjectURL(objectUrl);
+  }
+};
+
+export const importBackup = async (
+  backup: BackupPayload,
+  options?: { dryRun?: boolean; mode?: 'merge' | 'replace_all' },
+): Promise<BackupImportResponse> => {
+  const { data } = await api.post<BackupImportResponse>('/backup/import', {
+    backup,
+    dry_run: options?.dryRun ?? false,
+    mode: options?.mode ?? 'merge',
+  });
   return data;
 };
