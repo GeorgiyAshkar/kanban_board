@@ -23,7 +23,7 @@ from app.schemas.schemas import (
     TaskRead,
 )
 from app.services.history import log_history
-from app.services.tasks import apply_task_patch
+from app.services.tasks import apply_task_patch, touch_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -237,6 +237,7 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     task = Task(**payload.model_dump())
     task.created_at = datetime.utcnow()
     task.updated_at = task.created_at
+    task.row_version = 1
 
     selected_column: BoardColumn | None = None
     if task.board_column_id is not None:
@@ -296,6 +297,20 @@ def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)):
     if not patch_data:
         return task
 
+    expected_row_version = patch_data.pop("row_version", None)
+    if expected_row_version is None:
+        raise HTTPException(status_code=428, detail="row_version is required for optimistic locking")
+    if expected_row_version != task.row_version:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Task has been modified by another operation",
+                "current_row_version": task.row_version,
+            },
+        )
+    if not patch_data:
+        return task
+
     apply_task_patch(db, task, patch_data)
     db.commit()
     db.refresh(task)
@@ -314,7 +329,7 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
 def archive_task(task_id: int, db: Session = Depends(get_db)):
     task = _get_task_or_404(db, task_id)
     task.is_archived = True
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     log_history(db, task_id=task.id, action_type="task_archived")
     db.commit()
     db.refresh(task)
@@ -325,7 +340,7 @@ def archive_task(task_id: int, db: Session = Depends(get_db)):
 def restore_task(task_id: int, db: Session = Depends(get_db)):
     task = _get_task_or_404(db, task_id)
     task.is_archived = False
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     log_history(db, task_id=task.id, action_type="task_restored")
     db.commit()
     db.refresh(task)
@@ -343,7 +358,7 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
 
     task.is_done = True
     task.done_at = datetime.utcnow()
-    task.updated_at = task.done_at
+    touch_task(task, at=task.done_at)
     log_history(db, task_id=task.id, action_type="task_completed")
     db.commit()
     db.refresh(task)
@@ -365,7 +380,7 @@ def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db)):
         task.position = payload.position
     task.status = target_column.canonical_status
 
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
 
     if old_column_id != task.board_column_id:
         log_history(
