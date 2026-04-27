@@ -19,6 +19,11 @@ FIELD_TO_ACTION = {
 }
 
 
+def touch_task(task: Task, *, at: datetime | None = None) -> None:
+    task.updated_at = at or datetime.utcnow()
+    task.row_version = (task.row_version or 0) + 1
+
+
 def apply_task_patch(db: Session, task: Task, patch_data: dict) -> Task:
     for field, new_value in patch_data.items():
         old_value = getattr(task, field)
@@ -41,6 +46,6 @@ def apply_task_patch(db: Session, task: Task, patch_data: dict) -> Task:
     if patch_data.get("is_done") is False:
         task.done_at = None
 
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     db.add(task)
     return task

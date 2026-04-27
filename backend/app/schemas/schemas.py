@@ -35,6 +35,7 @@ class TaskCreate(TaskBase):
 
 
 class TaskPatch(BaseModel):
+    row_version: Optional[int] = Field(default=None, ge=1)
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
@@ -59,6 +60,7 @@ class TaskPatch(BaseModel):
 
 class TaskRead(TaskBase):
     id: int
+    row_version: int
     is_archived: bool
     is_done: bool
     created_at: datetime

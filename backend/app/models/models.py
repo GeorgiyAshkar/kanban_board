@@ -44,6 +44,7 @@ class Task(Base):
     priority = Column(SAEnum(TaskPriority), default=TaskPriority.NORMAL)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    row_version = Column(Integer, default=1, nullable=False)
     deadline_at = Column(DateTime, nullable=True)
     planned_return_at = Column(DateTime, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
