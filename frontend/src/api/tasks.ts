@@ -66,6 +66,44 @@ export interface AnalyticsReport {
   trend: AnalyticsTrendPoint[];
 }
 
+export interface BackupMetadata {
+  exported_at: string;
+  app_version: string;
+  task_count: number;
+  column_count: number;
+  tag_count: number;
+}
+
+export interface BackupTaskItem {
+  title: string;
+  description: string;
+  status: string;
+  priority: Task['priority'];
+  deadline_at?: string | null;
+  planned_return_at?: string | null;
+  position: number;
+  board_column_name?: string | null;
+  tags: string[];
+}
+
+export interface BackupPayload {
+  metadata: BackupMetadata;
+  columns: BoardColumn[];
+  tags: Tag[];
+  tasks: BackupTaskItem[];
+}
+
+export interface BackupImportResponse {
+  dry_run: boolean;
+  mode: 'merge' | 'replace_all';
+  tasks_to_import: number;
+  tags_to_create: number;
+  columns_to_create: number;
+  created_tasks: number;
+  created_tags: number;
+  created_columns: number;
+}
+
 export const fetchTasks = async (): Promise<Task[]> => {
   const { data } = await api.get<Task[]>('/tasks?archived=false&limit=200');
   return data;
@@ -280,5 +318,30 @@ export const fetchAnalyticsReport = async (
   bucket: 'day' | 'week' = 'week',
 ): Promise<AnalyticsReport> => {
   const { data } = await api.get<AnalyticsReport>('/analytics/report', { params: { days, bucket } });
+  return data;
+};
+
+export const buildBackupDownloadUrl = (kind: 'json' | 'csv' | 'archive'): string => {
+  const map = {
+    json: '/backup/export.json',
+    csv: '/backup/export.csv',
+    archive: '/backup/archive',
+  } as const;
+  const baseURL = api.defaults.baseURL ?? '/api';
+  if (baseURL.startsWith('http')) {
+    return `${baseURL.replace(/\/$/, '')}${map[kind]}`;
+  }
+  return `${map[kind]}`;
+};
+
+export const importBackup = async (
+  backup: BackupPayload,
+  options?: { dryRun?: boolean; mode?: 'merge' | 'replace_all' },
+): Promise<BackupImportResponse> => {
+  const { data } = await api.post<BackupImportResponse>('/backup/import', {
+    backup,
+    dry_run: options?.dryRun ?? false,
+    mode: options?.mode ?? 'merge',
+  });
   return data;
 };

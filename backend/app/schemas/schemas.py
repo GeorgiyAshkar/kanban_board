@@ -35,6 +35,7 @@ class TaskCreate(TaskBase):
 
 
 class TaskPatch(BaseModel):
+    row_version: Optional[int] = Field(default=None, ge=1)
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
@@ -59,6 +60,7 @@ class TaskPatch(BaseModel):
 
 class TaskRead(TaskBase):
     id: int
+    row_version: int
     is_archived: bool
     is_done: bool
     created_at: datetime
@@ -164,6 +166,8 @@ class ColumnCreate(BaseModel):
     canonical_status: str = "inbox"
     position: int = 0
     color: str = "#e2e8f0"
+    wip_limit: Optional[int] = Field(default=None, ge=1, le=999)
+    sla_hours: Optional[int] = Field(default=None, ge=1, le=720)
     is_system: bool = False
 
 
@@ -172,6 +176,8 @@ class ColumnPatch(BaseModel):
     canonical_status: Optional[str] = None
     position: Optional[int] = None
     color: Optional[str] = None
+    wip_limit: Optional[int] = Field(default=None, ge=1, le=999)
+    sla_hours: Optional[int] = Field(default=None, ge=1, le=720)
 
 
 class ColumnRead(BaseModel):
@@ -180,6 +186,8 @@ class ColumnRead(BaseModel):
     canonical_status: str
     position: int
     color: str
+    wip_limit: Optional[int] = None
+    sla_hours: Optional[int] = None
     is_system: bool
 
     class Config:
@@ -286,3 +294,61 @@ class AnalyticsSummary(BaseModel):
 class AnalyticsReportResponse(BaseModel):
     summary: AnalyticsSummary
     trend: list[AnalyticsTrendPoint]
+
+
+class BackupMetadata(BaseModel):
+    exported_at: datetime
+    app_version: str
+    task_count: int
+    column_count: int
+    tag_count: int
+
+
+class BackupTaskItem(BaseModel):
+    title: str
+    description: str = ""
+    status: str = "inbox"
+    priority: TaskPriority = TaskPriority.NORMAL
+    deadline_at: datetime | None = None
+    planned_return_at: datetime | None = None
+    position: int = 0
+    board_column_name: str | None = None
+    project_id: str | None = None
+    color_mark: str | None = None
+    estimate_minutes: int | None = None
+    spent_minutes: int | None = None
+    assignee_last_name: str | None = None
+    assignee_first_name: str | None = None
+    assignee_middle_name: str | None = None
+    assignee_phone: str | None = None
+    assignee_email: str | None = None
+    assignee_org: str | None = None
+    emoji: str | None = None
+    is_done: bool = False
+    is_archived: bool = False
+    done_at: datetime | None = None
+    tags: list[str] = []
+
+
+class BackupPayload(BaseModel):
+    metadata: BackupMetadata
+    columns: list[ColumnRead]
+    tags: list[TagRead]
+    tasks: list[BackupTaskItem]
+
+
+class BackupImportRequest(BaseModel):
+    backup: BackupPayload
+    dry_run: bool = False
+    mode: str = Field(default="merge", pattern="^(merge|replace_all)$")
+
+
+class BackupImportResponse(BaseModel):
+    dry_run: bool
+    mode: str
+    tasks_to_import: int
+    tags_to_create: int
+    columns_to_create: int
+    created_tasks: int = 0
+    created_tags: int = 0
+    created_columns: int = 0

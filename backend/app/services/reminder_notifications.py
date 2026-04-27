@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.models import ReminderNotification, ReminderNotificationStatus, Task, TaskPriority, TaskReminder
 from app.services.history import log_history
+from app.services.tasks import touch_task
 
 AUTOMATION_REMINDER_PREFIX = "[AUTO] Срочный дедлайн"
 
@@ -41,7 +42,7 @@ def apply_deadline_automation(db: Session, now: datetime | None = None) -> int:
         if next_priority != task.priority:
             old_priority = task.priority
             task.priority = next_priority
-            task.updated_at = current_time
+            touch_task(task, at=current_time)
             log_history(
                 db,
                 task_id=task.id,
