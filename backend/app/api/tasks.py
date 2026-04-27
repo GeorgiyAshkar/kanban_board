@@ -7,7 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import BoardColumn, Tag, Task, TaskChecklistItem, TaskComment, TaskHistory, TaskReminder, TaskTag
+from app.models.models import BoardColumn, Tag, Task, TaskChecklistItem, TaskComment, TaskHistory, TaskReminder, TaskTag, User, UserRole
 from app.schemas.schemas import (
     BoardResponse,
     BoardTaskMetadata,
@@ -24,14 +24,16 @@ from app.schemas.schemas import (
 )
 from app.services.history import log_history
 from app.services.tasks import apply_task_patch, touch_task
+from app.security import ensure_task_owner_or_admin, get_current_user
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def _get_task_or_404(db: Session, task_id: int) -> Task:
+def _get_task_or_404(db: Session, task_id: int, user: User) -> Task:
     task = db.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    ensure_task_owner_or_admin(task.owner_id, user)
     return task
 
 
@@ -133,8 +135,11 @@ def list_tasks(
     limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     stmt = select(Task)
+    if current_user.role != UserRole.ADMIN:
+        stmt = stmt.where(Task.owner_id == current_user.id)
     stmt = _build_task_filters(
         stmt,
         archived=archived,
@@ -172,6 +177,7 @@ def board_view(
     limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     base_stmt = _build_task_filters(
         select(Task),
@@ -188,6 +194,8 @@ def board_view(
         tag_ids=tag_ids,
         q=q,
     )
+    if current_user.role != UserRole.ADMIN:
+        base_stmt = base_stmt.where(Task.owner_id == current_user.id)
     total = db.scalar(select(func.count()).select_from(base_stmt.subquery())) or 0
     tasks = db.scalars(base_stmt.order_by(Task.board_column_id, Task.position, Task.id).limit(limit).offset(offset)).all()
     task_ids = [task.id for task in tasks]
@@ -200,25 +208,33 @@ def board_view(
 def board_metadata(
     task_ids: list[int] = Query(default=[]),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     ids = [task_id for task_id in task_ids if task_id > 0]
     if not ids:
         return []
 
+    visible_tasks_subquery = select(Task.id).where(Task.id.in_(ids))
+    if current_user.role != UserRole.ADMIN:
+        visible_tasks_subquery = visible_tasks_subquery.where(Task.owner_id == current_user.id)
+    visible_task_ids = [row[0] for row in db.execute(visible_tasks_subquery).all()]
+    if not visible_task_ids:
+        return []
+
     tags_stmt = (
         select(TaskTag.task_id, Tag)
         .join(Tag, Tag.id == TaskTag.tag_id)
-        .where(TaskTag.task_id.in_(ids))
+        .where(TaskTag.task_id.in_(visible_task_ids))
         .order_by(TaskTag.task_id, Tag.name)
     )
     checklist_stmt = (
         select(TaskChecklistItem)
-        .where(TaskChecklistItem.task_id.in_(ids))
+        .where(TaskChecklistItem.task_id.in_(visible_task_ids))
         .order_by(TaskChecklistItem.task_id, TaskChecklistItem.position, TaskChecklistItem.id)
     )
 
-    tags_by_task: dict[int, list[TagRead]] = {task_id: [] for task_id in ids}
-    checklist_by_task: dict[int, list[ChecklistItemRead]] = {task_id: [] for task_id in ids}
+    tags_by_task: dict[int, list[TagRead]] = {task_id: [] for task_id in visible_task_ids}
+    checklist_by_task: dict[int, list[ChecklistItemRead]] = {task_id: [] for task_id in visible_task_ids}
 
     for task_id, tag in db.execute(tags_stmt).all():
         tags_by_task.setdefault(task_id, []).append(TagRead.model_validate(tag))
@@ -228,16 +244,17 @@ def board_metadata(
 
     return [
         BoardTaskMetadata(task_id=task_id, tags=tags_by_task.get(task_id, []), checklist=checklist_by_task.get(task_id, []))
-        for task_id in ids
+        for task_id in visible_task_ids
     ]
 
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
-def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
+def create_task(payload: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     task = Task(**payload.model_dump())
     task.created_at = datetime.utcnow()
     task.updated_at = task.created_at
     task.row_version = 1
+    task.owner_id = current_user.id
 
     selected_column: BoardColumn | None = None
     if task.board_column_id is not None:
@@ -261,13 +278,13 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{task_id}", response_model=TaskRead)
-def get_task(task_id: int, db: Session = Depends(get_db)):
-    return _get_task_or_404(db, task_id)
+def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return _get_task_or_404(db, task_id, current_user)
 
 
 @router.get("/{task_id}/details", response_model=TaskDetailsResponse)
-def get_task_details(task_id: int, db: Session = Depends(get_db)):
-    _get_task_or_404(db, task_id)
+def get_task_details(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _get_task_or_404(db, task_id, current_user)
     comments = db.scalars(select(TaskComment).where(TaskComment.task_id == task_id).order_by(TaskComment.created_at, TaskComment.id)).all()
     reminders = db.scalars(select(TaskReminder).where(TaskReminder.task_id == task_id).order_by(TaskReminder.remind_at, TaskReminder.id)).all()
     checklist = db.scalars(
@@ -291,8 +308,8 @@ def get_task_details(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
-def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = _get_task_or_404(db, task_id, current_user)
     patch_data = payload.model_dump(exclude_unset=True)
     if not patch_data:
         return task
@@ -318,16 +335,16 @@ def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)):
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = _get_task_or_404(db, task_id, current_user)
     log_history(db, task_id=task.id, action_type="task_deleted", old_value=task.title)
     db.delete(task)
     db.commit()
 
 
 @router.post("/{task_id}/archive", response_model=TaskRead)
-def archive_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def archive_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = _get_task_or_404(db, task_id, current_user)
     task.is_archived = True
     touch_task(task)
     log_history(db, task_id=task.id, action_type="task_archived")
@@ -337,8 +354,8 @@ def archive_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{task_id}/restore", response_model=TaskRead)
-def restore_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def restore_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = _get_task_or_404(db, task_id, current_user)
     task.is_archived = False
     touch_task(task)
     log_history(db, task_id=task.id, action_type="task_restored")
@@ -348,8 +365,8 @@ def restore_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{task_id}/complete", response_model=TaskRead)
-def complete_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def complete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = _get_task_or_404(db, task_id, current_user)
 
     done_column = db.scalar(select(BoardColumn).where(BoardColumn.name == "Готово"))
     if done_column:
@@ -366,8 +383,8 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{task_id}/move", response_model=TaskRead)
-def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = _get_task_or_404(db, task_id, current_user)
     target_column = db.get(BoardColumn, payload.board_column_id)
     if not target_column:
         raise HTTPException(status_code=404, detail="Column not found")

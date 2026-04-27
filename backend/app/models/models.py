@@ -34,6 +34,33 @@ class ReminderRepeatType(str, Enum):
     CUSTOM = "custom"
 
 
+class UserRole(str, Enum):
+    MEMBER = "member"
+    ADMIN = "admin"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(SAEnum(UserRole), default=UserRole.MEMBER, nullable=False, index=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(255), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True)
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -50,6 +77,7 @@ class Task(Base):
     is_archived = Column(Boolean, default=False, nullable=False)
     is_done = Column(Boolean, default=False, nullable=False)
     done_at = Column(DateTime, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     position = Column(Integer, default=0, nullable=False)
     board_column_id = Column(Integer, ForeignKey("board_columns.id"), nullable=True)
     project_id = Column(String(128), nullable=True)

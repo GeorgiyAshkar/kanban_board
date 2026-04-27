@@ -30,6 +30,34 @@ class TaskBase(BaseModel):
     emoji: Optional[str] = None
 
 
+class UserRegister(BaseModel):
+    email: str
+    password: str = Field(min_length=8, max_length=255)
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str = Field(min_length=1, max_length=255)
+
+
+class UserRead(BaseModel):
+    id: int
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SessionRead(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+    user: UserRead
+
+
 class TaskCreate(TaskBase):
     pass
 
@@ -60,6 +88,7 @@ class TaskPatch(BaseModel):
 
 class TaskRead(TaskBase):
     id: int
+    owner_id: Optional[int] = None
     row_version: int
     is_archived: bool
     is_done: bool

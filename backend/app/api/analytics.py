@@ -7,8 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import Task, TaskHistory
+from app.models.models import Task, TaskHistory, User, UserRole
 from app.schemas.schemas import AnalyticsReportResponse, AnalyticsSummary, AnalyticsTrendPoint
+from app.security import get_current_user
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -26,12 +27,15 @@ def analytics_report(
     bucket: str = Query(default="week", pattern="^(day|week)$"),
     include_archived: bool = Query(default=False),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     now = datetime.utcnow()
     window_start = now - timedelta(days=days)
     bucket_days = 1 if bucket == "day" else 7
 
     task_stmt = select(Task).where(Task.created_at >= window_start, Task.created_at <= now)
+    if current_user.role != UserRole.ADMIN:
+        task_stmt = task_stmt.where(Task.owner_id == current_user.id)
     if not include_archived:
         task_stmt = task_stmt.where(Task.is_archived.is_(False))
     tasks = db.scalars(task_stmt).all()

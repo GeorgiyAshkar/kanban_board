@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import analytics, checklist, columns, comments, history, notifications, ops, reminders, tags, task_tags, tasks, today
+from app.api import analytics, auth, checklist, columns, comments, history, notifications, ops, reminders, tags, task_tags, tasks, today
 from app.db.database import SessionLocal
 from app.db.migrations import run_migrations
 from app.models.models import BoardColumn
@@ -25,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(tasks.router)
+app.include_router(auth.router)
 app.include_router(history.router)
 app.include_router(comments.router)
 app.include_router(reminders.router)

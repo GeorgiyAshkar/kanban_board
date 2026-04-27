@@ -64,6 +64,21 @@ uvicorn app.main:app --reload
 - `GET /ready` — readiness-проба с проверкой БД и `db_ping_ms`.
 - `GET /metrics` — метрики в формате Prometheus text exposition.
 
+### Базовый security-контур для multi-user
+
+- Добавлены модели `users` и `user_sessions`, а у `tasks` — `owner_id`.
+- Доступны auth endpoints:
+  - `POST /auth/register`
+  - `POST /auth/login`
+  - `GET /auth/me`
+  - `POST /auth/logout`
+- Доступ к данным задач ограничен owner/admin-проверками; операции с колонками/глобальными тегами — только для роли `admin`.
+- Для строгого прод-режима включите обязательную авторизацию:
+
+```bash
+export AUTH_REQUIRED=true
+```
+
 Для доступа к backend из локальной сети используйте:
 
 ```bash
