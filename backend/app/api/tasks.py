@@ -24,12 +24,19 @@ from app.schemas.schemas import (
 )
 from app.services.history import log_history
 from app.services.tasks import apply_task_patch
+from app.security import Actor, ensure_can_write, get_current_actor
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def _get_task_or_404(db: Session, task_id: int) -> Task:
-    task = db.get(Task, task_id)
+def _get_task_or_404(db: Session, task_id: int, actor: Actor) -> Task:
+    stmt = select(Task).where(Task.id == task_id)
+    if actor.workspace_id == "personal":
+        stmt = stmt.where(or_(Task.project_id.is_(None), Task.project_id == "personal"))
+    else:
+        stmt = stmt.where(Task.project_id == actor.workspace_id)
+
+    task = db.scalar(stmt)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -53,7 +60,13 @@ def _build_task_filters(
     date_to: date | None,
     tag_ids: list[int] | None,
     q: str | None,
+    workspace_id: str,
 ):
+    if workspace_id == "personal":
+        stmt = stmt.where(or_(Task.project_id.is_(None), Task.project_id == "personal"))
+    else:
+        stmt = stmt.where(Task.project_id == workspace_id)
+
     if archived is not None:
         stmt = stmt.where(Task.is_archived == archived)
     if is_done is not None:
@@ -133,6 +146,7 @@ def list_tasks(
     limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    actor: Actor = Depends(get_current_actor),
 ):
     stmt = select(Task)
     stmt = _build_task_filters(
@@ -149,6 +163,7 @@ def list_tasks(
         date_to=date_to,
         tag_ids=tag_ids,
         q=q,
+        workspace_id=actor.workspace_id,
     )
     stmt = stmt.order_by(Task.board_column_id, Task.position, Task.id)
     stmt = stmt.limit(limit).offset(offset)
@@ -172,6 +187,7 @@ def board_view(
     limit: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    actor: Actor = Depends(get_current_actor),
 ):
     base_stmt = _build_task_filters(
         select(Task),
@@ -187,6 +203,7 @@ def board_view(
         date_to=date_to,
         tag_ids=tag_ids,
         q=q,
+        workspace_id=actor.workspace_id,
     )
     total = db.scalar(select(func.count()).select_from(base_stmt.subquery())) or 0
     tasks = db.scalars(base_stmt.order_by(Task.board_column_id, Task.position, Task.id).limit(limit).offset(offset)).all()
@@ -233,8 +250,14 @@ def board_metadata(
 
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
-def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
+def create_task(
+    payload: TaskCreate,
+    db: Session = Depends(get_db),
+    actor: Actor = Depends(get_current_actor),
+):
+    ensure_can_write(actor)
     task = Task(**payload.model_dump())
+    task.project_id = actor.workspace_id if actor.workspace_id != "personal" else None
     task.created_at = datetime.utcnow()
     task.updated_at = task.created_at
 
@@ -260,13 +283,13 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{task_id}", response_model=TaskRead)
-def get_task(task_id: int, db: Session = Depends(get_db)):
-    return _get_task_or_404(db, task_id)
+def get_task(task_id: int, db: Session = Depends(get_db), actor: Actor = Depends(get_current_actor)):
+    return _get_task_or_404(db, task_id, actor)
 
 
 @router.get("/{task_id}/details", response_model=TaskDetailsResponse)
-def get_task_details(task_id: int, db: Session = Depends(get_db)):
-    _get_task_or_404(db, task_id)
+def get_task_details(task_id: int, db: Session = Depends(get_db), actor: Actor = Depends(get_current_actor)):
+    _get_task_or_404(db, task_id, actor)
     comments = db.scalars(select(TaskComment).where(TaskComment.task_id == task_id).order_by(TaskComment.created_at, TaskComment.id)).all()
     reminders = db.scalars(select(TaskReminder).where(TaskReminder.task_id == task_id).order_by(TaskReminder.remind_at, TaskReminder.id)).all()
     checklist = db.scalars(
@@ -290,8 +313,14 @@ def get_task_details(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
-def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def patch_task(
+    task_id: int,
+    payload: TaskPatch,
+    db: Session = Depends(get_db),
+    actor: Actor = Depends(get_current_actor),
+):
+    ensure_can_write(actor)
+    task = _get_task_or_404(db, task_id, actor)
     patch_data = payload.model_dump(exclude_unset=True)
     if not patch_data:
         return task
@@ -303,16 +332,18 @@ def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)):
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def delete_task(task_id: int, db: Session = Depends(get_db), actor: Actor = Depends(get_current_actor)):
+    ensure_can_write(actor)
+    task = _get_task_or_404(db, task_id, actor)
     log_history(db, task_id=task.id, action_type="task_deleted", old_value=task.title)
     db.delete(task)
     db.commit()
 
 
 @router.post("/{task_id}/archive", response_model=TaskRead)
-def archive_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def archive_task(task_id: int, db: Session = Depends(get_db), actor: Actor = Depends(get_current_actor)):
+    ensure_can_write(actor)
+    task = _get_task_or_404(db, task_id, actor)
     task.is_archived = True
     task.updated_at = datetime.utcnow()
     log_history(db, task_id=task.id, action_type="task_archived")
@@ -322,8 +353,9 @@ def archive_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{task_id}/restore", response_model=TaskRead)
-def restore_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def restore_task(task_id: int, db: Session = Depends(get_db), actor: Actor = Depends(get_current_actor)):
+    ensure_can_write(actor)
+    task = _get_task_or_404(db, task_id, actor)
     task.is_archived = False
     task.updated_at = datetime.utcnow()
     log_history(db, task_id=task.id, action_type="task_restored")
@@ -333,8 +365,9 @@ def restore_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{task_id}/complete", response_model=TaskRead)
-def complete_task(task_id: int, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def complete_task(task_id: int, db: Session = Depends(get_db), actor: Actor = Depends(get_current_actor)):
+    ensure_can_write(actor)
+    task = _get_task_or_404(db, task_id, actor)
 
     done_column = db.scalar(select(BoardColumn).where(BoardColumn.name == "Готово"))
     if done_column:
@@ -351,8 +384,14 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{task_id}/move", response_model=TaskRead)
-def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db)):
-    task = _get_task_or_404(db, task_id)
+def move_task(
+    task_id: int,
+    payload: TaskMove,
+    db: Session = Depends(get_db),
+    actor: Actor = Depends(get_current_actor),
+):
+    ensure_can_write(actor)
+    task = _get_task_or_404(db, task_id, actor)
     target_column = db.get(BoardColumn, payload.board_column_id)
     if not target_column:
         raise HTTPException(status_code=404, detail="Column not found")
