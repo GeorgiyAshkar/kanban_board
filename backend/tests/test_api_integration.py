@@ -229,6 +229,57 @@ def test_analytics_report_contains_summary_and_trends(client: TestClient) -> Non
     assert isinstance(payload['trend'], list)
 
 
+def test_patch_task_uses_optimistic_lock_row_version(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Lock target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task = created.json()
+    task_id = task['id']
+    assert task['row_version'] == 1
+
+    first_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'title': 'Updated once'},
+    )
+    assert first_patch.status_code == 200
+    assert first_patch.json()['row_version'] == 2
+
+    stale_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'description': 'stale write'},
+    )
+    assert stale_patch.status_code == 409
+    detail = stale_patch.json()['detail']
+    assert detail['current_row_version'] == 2
+
+
+def test_multi_user_ownership_and_role_checks(client: TestClient) -> None:
+    user1 = {'email': 'owner1@example.com', 'password': 'StrongPass123'}
+    user2 = {'email': 'owner2@example.com', 'password': 'StrongPass123'}
+    assert client.post('/auth/register', json=user1).status_code == 201
+    assert client.post('/auth/register', json=user2).status_code == 201
+
+    token1 = client.post('/auth/login', json=user1).json()['access_token']
+    token2 = client.post('/auth/login', json=user2).json()['access_token']
+    headers1 = {'Authorization': f'Bearer {token1}'}
+    headers2 = {'Authorization': f'Bearer {token2}'}
+
+    created = client.post('/tasks', json={'title': 'Owned task', 'description': '', 'priority': 'normal'}, headers=headers1)
+    assert created.status_code == 201
+    task_id = created.json()['id']
+    assert created.json()['owner_id'] is not None
+
+    own_list = client.get('/tasks', params={'archived': 'false'}, headers=headers1)
+    assert own_list.status_code == 200
+    assert any(item['id'] == task_id for item in own_list.json())
+
+    other_list = client.get('/tasks', params={'archived': 'false'}, headers=headers2)
+    assert other_list.status_code == 200
+    assert all(item['id'] != task_id for item in other_list.json())
+
+    denied_patch = client.patch(f'/tasks/{task_id}', json={'row_version': 1, 'title': 'hack'}, headers=headers2)
+    assert denied_patch.status_code == 403
+
+
 def test_deadline_automation_escalates_priority_and_creates_reminder(client: TestClient) -> None:
     now = datetime.utcnow()
     created = client.post(

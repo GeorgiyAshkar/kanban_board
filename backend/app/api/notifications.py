@@ -10,8 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal, get_db
-from app.models.models import ReminderNotification, ReminderNotificationStatus
+from app.models.models import ReminderNotification, ReminderNotificationStatus, Task, User, UserRole
 from app.schemas.schemas import ReminderNotificationRead
+from app.security import get_current_user
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -21,6 +22,7 @@ def pull_notification_events(
     after_id: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     stmt = (
         select(ReminderNotification)
@@ -31,16 +33,24 @@ def pull_notification_events(
         .order_by(ReminderNotification.id)
         .limit(limit)
     )
+    if current_user.role != UserRole.ADMIN:
+        stmt = stmt.where(ReminderNotification.task_id.in_(select(Task.id).where(Task.owner_id == current_user.id)))
     return db.scalars(stmt).all()
 
 
 @router.post("/events/{notification_id}/ack", response_model=ReminderNotificationRead)
-def acknowledge_notification(notification_id: int, db: Session = Depends(get_db)):
+def acknowledge_notification(notification_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     notification = db.get(ReminderNotification, notification_id)
     if notification is None:
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail="Notification not found")
+    if current_user.role != UserRole.ADMIN:
+        task = db.get(Task, notification.task_id)
+        if not task or task.owner_id != current_user.id:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=403, detail="Access denied")
 
     notification.status = ReminderNotificationStatus.ACKNOWLEDGED
     notification.acknowledged_at = datetime.utcnow()
@@ -53,6 +63,7 @@ def acknowledge_notification(notification_id: int, db: Session = Depends(get_db)
 async def stream_notification_events(
     request: Request,
     after_id: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
 ):
     last_event_id = request.headers.get("last-event-id")
     start_after_id = after_id
@@ -79,6 +90,8 @@ async def stream_notification_events(
                     .order_by(ReminderNotification.id)
                     .limit(20)
                 )
+                if current_user.role != UserRole.ADMIN:
+                    stmt = stmt.where(ReminderNotification.task_id.in_(select(Task.id).where(Task.owner_id == current_user.id)))
                 events = db.scalars(stmt).all()
             finally:
                 db.close()

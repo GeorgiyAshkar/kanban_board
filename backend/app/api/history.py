@@ -7,14 +7,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import TaskHistory
+from app.models.models import Task, TaskHistory, User, UserRole
 from app.schemas.schemas import HistoryRead
+from app.security import ensure_task_owner_or_admin, get_current_user
 
 router = APIRouter(tags=["history"])
 
 
 @router.get("/tasks/{task_id}/history", response_model=list[HistoryRead])
-def task_history(task_id: int, db: Session = Depends(get_db)):
+def task_history(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = db.get(Task, task_id)
+    if not task:
+        return []
+    ensure_task_owner_or_admin(task.owner_id, current_user)
     stmt = select(TaskHistory).where(TaskHistory.task_id == task_id).order_by(TaskHistory.created_at.desc())
     return db.scalars(stmt).all()
 
@@ -28,8 +33,12 @@ def global_history(
     limit: int = 100,
     offset: int = 0,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     stmt = select(TaskHistory)
+    if current_user.role != UserRole.ADMIN:
+        owned_task_ids = select(Task.id).where(Task.owner_id == current_user.id)
+        stmt = stmt.where(TaskHistory.task_id.in_(owned_task_ids))
     if task_id:
         stmt = stmt.where(TaskHistory.task_id == task_id)
     if action_type:
