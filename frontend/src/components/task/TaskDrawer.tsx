@@ -176,6 +176,7 @@ export function TaskDrawer({
             className="small-btn"
             onClick={async () => {
               await onSaveTask({
+                row_version: task.row_version,
                 title: draftTitle,
                 description: draftDescription,
                 status: draftStatus,

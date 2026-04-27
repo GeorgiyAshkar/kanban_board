@@ -229,6 +229,29 @@ def test_analytics_report_contains_summary_and_trends(client: TestClient) -> Non
     assert isinstance(payload['trend'], list)
 
 
+def test_patch_task_uses_optimistic_lock_row_version(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Lock target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task = created.json()
+    task_id = task['id']
+    assert task['row_version'] == 1
+
+    first_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'title': 'Updated once'},
+    )
+    assert first_patch.status_code == 200
+    assert first_patch.json()['row_version'] == 2
+
+    stale_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'description': 'stale write'},
+    )
+    assert stale_patch.status_code == 409
+    detail = stale_patch.json()['detail']
+    assert detail['current_row_version'] == 2
+
+
 def test_deadline_automation_escalates_priority_and_creates_reminder(client: TestClient) -> None:
     now = datetime.utcnow()
     created = client.post(
