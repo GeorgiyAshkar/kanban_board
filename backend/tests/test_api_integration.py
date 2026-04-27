@@ -226,7 +226,102 @@ def test_analytics_report_contains_summary_and_trends(client: TestClient) -> Non
     assert 'summary' in payload
     assert 'trend' in payload
     assert payload['summary']['completed_tasks'] >= 1
+    assert 'aging_wip' in payload['summary']
+    assert 'throughput_variability' in payload['summary']
     assert isinstance(payload['trend'], list)
+    if payload['trend']:
+        point = payload['trend'][0]
+        assert 'burnup_completed_cumulative' in point
+        assert 'burnup_scope_cumulative' in point
+        assert 'burndown_remaining' in point
+
+
+def test_patch_task_uses_optimistic_lock_row_version(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Lock target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task = created.json()
+    task_id = task['id']
+    assert task['row_version'] == 1
+
+    first_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'title': 'Updated once'},
+    )
+    assert first_patch.status_code == 200
+    assert first_patch.json()['row_version'] == 2
+
+    stale_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'description': 'stale write'},
+    )
+    assert stale_patch.status_code == 409
+    detail = stale_patch.json()['detail']
+    assert detail['current_row_version'] == 2
+
+
+def test_patch_task_requires_row_version_precondition(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Precondition target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task_id = created.json()['id']
+
+    response = client.patch(
+        f'/tasks/{task_id}',
+        json={'title': 'without row version'},
+    )
+    assert response.status_code == 428
+    assert 'row_version is required' in response.json()['detail']
+
+
+def test_patch_task_with_same_values_keeps_row_version(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'No-op patch target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task = created.json()
+    task_id = task['id']
+    row_version = task['row_version']
+
+    noop_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': row_version, 'title': task['title']},
+    )
+    assert noop_patch.status_code == 200
+    assert noop_patch.json()['row_version'] == row_version
+
+
+def test_columns_support_wip_limit_and_sla_hours_settings(client: TestClient) -> None:
+    created = client.post(
+        '/columns',
+        json={
+            'name': 'Flow control',
+            'canonical_status': 'in_progress',
+            'position': 99,
+            'wip_limit': 3,
+            'sla_hours': 24,
+            'is_system': False,
+        },
+    )
+    assert created.status_code == 201
+    column = created.json()
+    column_id = column['id']
+    assert column['wip_limit'] == 3
+    assert column['sla_hours'] == 24
+
+    updated = client.patch(
+        f'/columns/{column_id}',
+        json={'wip_limit': 5, 'sla_hours': 48},
+    )
+    assert updated.status_code == 200
+    payload = updated.json()
+    assert payload['wip_limit'] == 5
+    assert payload['sla_hours'] == 48
+
+    cleared = client.patch(
+        f'/columns/{column_id}',
+        json={'wip_limit': None, 'sla_hours': None},
+    )
+    assert cleared.status_code == 200
+    payload = cleared.json()
+    assert payload['wip_limit'] is None
+    assert payload['sla_hours'] is None
 
 
 def test_deadline_automation_escalates_priority_and_creates_reminder(client: TestClient) -> None:

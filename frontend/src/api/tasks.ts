@@ -44,8 +44,25 @@ export interface AnalyticsTrendPoint {
   created_tasks: number;
   overdue_open_tasks: number;
   wip_open_tasks: number;
+  burnup_completed_cumulative: number;
+  burnup_scope_cumulative: number;
+  burndown_remaining: number;
   avg_lead_time_hours?: number | null;
   avg_cycle_time_hours?: number | null;
+}
+
+export interface AgingWipBreakdown {
+  less_than_1d: number;
+  d1_to_3: number;
+  d4_to_7: number;
+  d8_to_14: number;
+  greater_than_14d: number;
+}
+
+export interface ThroughputVariability {
+  mean_completed_per_period: number;
+  stddev_completed_per_period: number;
+  coeff_var_completed_per_period?: number | null;
 }
 
 export interface AnalyticsSummary {
@@ -59,6 +76,8 @@ export interface AnalyticsSummary {
   velocity_per_period: number;
   avg_lead_time_hours?: number | null;
   avg_cycle_time_hours?: number | null;
+  aging_wip: AgingWipBreakdown;
+  throughput_variability: ThroughputVariability;
 }
 
 export interface AnalyticsReport {

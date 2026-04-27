@@ -35,6 +35,7 @@ class TaskCreate(TaskBase):
 
 
 class TaskPatch(BaseModel):
+    row_version: Optional[int] = Field(default=None, ge=1)
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
@@ -59,6 +60,7 @@ class TaskPatch(BaseModel):
 
 class TaskRead(TaskBase):
     id: int
+    row_version: int
     is_archived: bool
     is_done: bool
     created_at: datetime
@@ -164,6 +166,8 @@ class ColumnCreate(BaseModel):
     canonical_status: str = "inbox"
     position: int = 0
     color: str = "#e2e8f0"
+    wip_limit: Optional[int] = Field(default=None, ge=1, le=999)
+    sla_hours: Optional[int] = Field(default=None, ge=1, le=720)
     is_system: bool = False
 
 
@@ -172,6 +176,8 @@ class ColumnPatch(BaseModel):
     canonical_status: Optional[str] = None
     position: Optional[int] = None
     color: Optional[str] = None
+    wip_limit: Optional[int] = Field(default=None, ge=1, le=999)
+    sla_hours: Optional[int] = Field(default=None, ge=1, le=720)
 
 
 class ColumnRead(BaseModel):
@@ -180,6 +186,8 @@ class ColumnRead(BaseModel):
     canonical_status: str
     position: int
     color: str
+    wip_limit: Optional[int] = None
+    sla_hours: Optional[int] = None
     is_system: bool
 
     class Config:
@@ -266,8 +274,25 @@ class AnalyticsTrendPoint(BaseModel):
     created_tasks: int
     overdue_open_tasks: int
     wip_open_tasks: int
+    burnup_completed_cumulative: int
+    burnup_scope_cumulative: int
+    burndown_remaining: int
     avg_lead_time_hours: float | None = None
     avg_cycle_time_hours: float | None = None
+
+
+class AgingWipBreakdown(BaseModel):
+    less_than_1d: int
+    d1_to_3: int
+    d4_to_7: int
+    d8_to_14: int
+    greater_than_14d: int
+
+
+class ThroughputVariability(BaseModel):
+    mean_completed_per_period: float
+    stddev_completed_per_period: float
+    coeff_var_completed_per_period: float | None = None
 
 
 class AnalyticsSummary(BaseModel):
@@ -281,6 +306,8 @@ class AnalyticsSummary(BaseModel):
     velocity_per_period: float
     avg_lead_time_hours: float | None = None
     avg_cycle_time_hours: float | None = None
+    aging_wip: AgingWipBreakdown
+    throughput_variability: ThroughputVariability
 
 
 class AnalyticsReportResponse(BaseModel):

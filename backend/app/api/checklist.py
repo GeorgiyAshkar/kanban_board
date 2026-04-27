@@ -10,6 +10,7 @@ from app.db.database import get_db
 from app.models.models import Task, TaskChecklistItem
 from app.schemas.schemas import ChecklistItemCreate, ChecklistItemPatch, ChecklistItemRead
 from app.services.history import log_history
+from app.services.tasks import touch_task
 
 router = APIRouter(tags=["checklist"])
 
@@ -28,7 +29,7 @@ def add_checklist_item(task_id: int, payload: ChecklistItemCreate, db: Session =
 
     item = TaskChecklistItem(task_id=task_id, **payload.model_dump())
     db.add(item)
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     log_history(db, task_id=task_id, action_type="checklist_item_added", new_value=payload.title)
     db.commit()
     db.refresh(item)
@@ -54,6 +55,10 @@ def patch_checklist_item(item_id: int, payload: ChecklistItemPatch, db: Session 
     if "title" in update_data:
         log_history(db, task_id=item.task_id, action_type="checklist_item_updated", new_value=item.title)
 
+    task = db.get(Task, item.task_id)
+    if task:
+        touch_task(task)
+
     db.commit()
     db.refresh(item)
     return item
@@ -66,5 +71,8 @@ def delete_checklist_item(item_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Checklist item not found")
 
     log_history(db, task_id=item.task_id, action_type="checklist_item_deleted", old_value=item.title)
+    task = db.get(Task, item.task_id)
+    if task:
+        touch_task(task)
     db.delete(item)
     db.commit()
