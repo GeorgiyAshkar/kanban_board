@@ -226,7 +226,14 @@ def test_analytics_report_contains_summary_and_trends(client: TestClient) -> Non
     assert 'summary' in payload
     assert 'trend' in payload
     assert payload['summary']['completed_tasks'] >= 1
+    assert 'aging_wip' in payload['summary']
+    assert 'throughput_variability' in payload['summary']
     assert isinstance(payload['trend'], list)
+    if payload['trend']:
+        point = payload['trend'][0]
+        assert 'burnup_completed_cumulative' in point
+        assert 'burnup_scope_cumulative' in point
+        assert 'burndown_remaining' in point
 
 
 def test_patch_task_uses_optimistic_lock_row_version(client: TestClient) -> None:

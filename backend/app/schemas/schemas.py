@@ -274,8 +274,25 @@ class AnalyticsTrendPoint(BaseModel):
     created_tasks: int
     overdue_open_tasks: int
     wip_open_tasks: int
+    burnup_completed_cumulative: int
+    burnup_scope_cumulative: int
+    burndown_remaining: int
     avg_lead_time_hours: float | None = None
     avg_cycle_time_hours: float | None = None
+
+
+class AgingWipBreakdown(BaseModel):
+    less_than_1d: int
+    d1_to_3: int
+    d4_to_7: int
+    d8_to_14: int
+    greater_than_14d: int
+
+
+class ThroughputVariability(BaseModel):
+    mean_completed_per_period: float
+    stddev_completed_per_period: float
+    coeff_var_completed_per_period: float | None = None
 
 
 class AnalyticsSummary(BaseModel):
@@ -289,6 +306,8 @@ class AnalyticsSummary(BaseModel):
     velocity_per_period: float
     avg_lead_time_hours: float | None = None
     avg_cycle_time_hours: float | None = None
+    aging_wip: AgingWipBreakdown
+    throughput_variability: ThroughputVariability
 
 
 class AnalyticsReportResponse(BaseModel):
