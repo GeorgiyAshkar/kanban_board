@@ -10,6 +10,7 @@ from app.db.database import get_db
 from app.models.models import Task, TaskComment
 from app.schemas.schemas import CommentCreate, CommentPatch, CommentRead
 from app.services.history import log_history
+from app.services.tasks import touch_task
 
 router = APIRouter(tags=["comments"])
 
@@ -27,7 +28,7 @@ def add_comment(task_id: int, payload: CommentCreate, db: Session = Depends(get_
 
     comment = TaskComment(task_id=task_id, text=payload.text, author=payload.author)
     db.add(comment)
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     log_history(db, task_id=task_id, action_type="comment_added", comment=payload.text[:200])
     db.commit()
     db.refresh(comment)
