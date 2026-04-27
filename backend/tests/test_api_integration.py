@@ -229,6 +229,143 @@ def test_analytics_report_contains_summary_and_trends(client: TestClient) -> Non
     assert isinstance(payload['trend'], list)
 
 
+def test_patch_task_uses_optimistic_lock_row_version(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Lock target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task = created.json()
+    task_id = task['id']
+    assert task['row_version'] == 1
+
+    first_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'title': 'Updated once'},
+    )
+    assert first_patch.status_code == 200
+    assert first_patch.json()['row_version'] == 2
+
+    stale_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': 1, 'description': 'stale write'},
+    )
+    assert stale_patch.status_code == 409
+    detail = stale_patch.json()['detail']
+    assert detail['current_row_version'] == 2
+
+
+def test_patch_task_requires_row_version_precondition(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'Precondition target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task_id = created.json()['id']
+
+    response = client.patch(
+        f'/tasks/{task_id}',
+        json={'title': 'without row version'},
+    )
+    assert response.status_code == 428
+    assert 'row_version is required' in response.json()['detail']
+
+
+def test_patch_task_with_same_values_keeps_row_version(client: TestClient) -> None:
+    created = client.post('/tasks', json={'title': 'No-op patch target', 'description': '', 'priority': 'normal'})
+    assert created.status_code == 201
+    task = created.json()
+    task_id = task['id']
+    row_version = task['row_version']
+
+    noop_patch = client.patch(
+        f'/tasks/{task_id}',
+        json={'row_version': row_version, 'title': task['title']},
+    )
+    assert noop_patch.status_code == 200
+    assert noop_patch.json()['row_version'] == row_version
+
+
+def test_columns_support_wip_limit_and_sla_hours_settings(client: TestClient) -> None:
+    created = client.post(
+        '/columns',
+        json={
+            'name': 'Flow control',
+            'canonical_status': 'in_progress',
+            'position': 99,
+            'wip_limit': 3,
+            'sla_hours': 24,
+            'is_system': False,
+        },
+    )
+    assert created.status_code == 201
+    column = created.json()
+    column_id = column['id']
+    assert column['wip_limit'] == 3
+    assert column['sla_hours'] == 24
+
+    updated = client.patch(
+        f'/columns/{column_id}',
+        json={'wip_limit': 5, 'sla_hours': 48},
+    )
+    assert updated.status_code == 200
+    payload = updated.json()
+    assert payload['wip_limit'] == 5
+    assert payload['sla_hours'] == 48
+
+    cleared = client.patch(
+        f'/columns/{column_id}',
+        json={'wip_limit': None, 'sla_hours': None},
+    )
+    assert cleared.status_code == 200
+    payload = cleared.json()
+    assert payload['wip_limit'] is None
+    assert payload['sla_hours'] is None
+
+
+def test_backup_export_and_replace_all_restore_flow(client: TestClient) -> None:
+    columns = client.get('/columns').json()
+    column_id = columns[0]['id']
+
+    base_task = client.post(
+        '/tasks',
+        json={
+            'title': 'Baseline task',
+            'description': 'included in backup',
+            'board_column_id': column_id,
+            'status': columns[0]['canonical_status'],
+            'priority': 'normal',
+        },
+    )
+    assert base_task.status_code == 201
+
+    exported = client.get('/backup/export.json')
+    assert exported.status_code == 200
+    payload = exported.json()
+    assert payload['metadata']['task_count'] >= 1
+
+    second_task = client.post(
+        '/tasks',
+        json={
+            'title': 'Extra task',
+            'description': 'should be removed by replace_all restore',
+            'board_column_id': column_id,
+            'status': columns[0]['canonical_status'],
+            'priority': 'normal',
+        },
+    )
+    assert second_task.status_code == 201
+
+    dry_run = client.post('/backup/import', json={'backup': payload, 'dry_run': True, 'mode': 'replace_all'})
+    assert dry_run.status_code == 200
+    assert dry_run.json()['dry_run'] is True
+    assert dry_run.json()['mode'] == 'replace_all'
+
+    restore = client.post('/backup/import', json={'backup': payload, 'dry_run': False, 'mode': 'replace_all'})
+    assert restore.status_code == 200
+    assert restore.json()['created_tasks'] == payload['metadata']['task_count']
+
+    tasks_after = client.get('/tasks', params={'archived': 'false', 'limit': 200})
+    assert tasks_after.status_code == 200
+    titles = [item['title'] for item in tasks_after.json()]
+    assert 'Baseline task' in titles
+    assert 'Extra task' not in titles
+
+
 def test_deadline_automation_escalates_priority_and_creates_reminder(client: TestClient) -> None:
     now = datetime.utcnow()
     created = client.post(

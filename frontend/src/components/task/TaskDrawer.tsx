@@ -52,7 +52,7 @@ export function TaskDrawer({
   const [draftPlannedReturnAt, setDraftPlannedReturnAt] = useState('');
   const [draftDeadlineAt, setDraftDeadlineAt] = useState('');
   const [draftProjectId, setDraftProjectId] = useState('');
-  const [draftColorMark, setDraftColorMark] = useState('#64748b');
+  const [draftColorMark, setDraftColorMark] = useState('');
   const [draftEstimateMinutes, setDraftEstimateMinutes] = useState('');
   const [draftSpentMinutes, setDraftSpentMinutes] = useState('');
   const [assigneeLastName, setAssigneeLastName] = useState('');
@@ -74,7 +74,7 @@ export function TaskDrawer({
     setDraftPlannedReturnAt(task.planned_return_at ? task.planned_return_at.slice(0, 10) : '');
     setDraftDeadlineAt(task.deadline_at ? task.deadline_at.slice(0, 10) : '');
     setDraftProjectId(task.project_id ?? '');
-    setDraftColorMark(task.color_mark ?? '#64748b');
+    setDraftColorMark(task.color_mark ?? '');
     setDraftEstimateMinutes(task.estimate_minutes != null ? String(task.estimate_minutes) : '');
     setDraftSpentMinutes(task.spent_minutes != null ? String(task.spent_minutes) : '');
     setAssigneeLastName(task.assignee_last_name ?? '');
@@ -176,6 +176,7 @@ export function TaskDrawer({
             className="small-btn"
             onClick={async () => {
               await onSaveTask({
+                row_version: task.row_version,
                 title: draftTitle,
                 description: draftDescription,
                 status: draftStatus,
@@ -256,23 +257,29 @@ export function TaskDrawer({
             <ul>
               {checklist.map((item) => (
                 <li key={item.id}>
-                  <label>
-                    <input type="checkbox" checked={item.is_done} onChange={() => onToggleChecklist(item.id, !item.is_done)} /> {item.title}
-                  </label>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="checkbox" checked={item.is_done} onChange={() => onToggleChecklist(item.id, !item.is_done)} />
                     <button
                       className="small-btn"
+                      title="Редактировать пункт"
+                      aria-label="Редактировать пункт"
                       onClick={async () => {
                         const nextTitle = window.prompt('Новое название пункта', item.title);
                         if (!nextTitle || !nextTitle.trim()) return;
                         await onEditChecklist(item.id, nextTitle.trim());
                       }}
                     >
-                      Редактировать
+                      ✏️
                     </button>
-                    <button className="small-btn" onClick={() => onDeleteChecklist(item.id)}>
-                      Удалить
+                    <button
+                      className="small-btn"
+                      title="Удалить пункт"
+                      aria-label="Удалить пункт"
+                      onClick={() => onDeleteChecklist(item.id)}
+                    >
+                      🗑️
                     </button>
+                    <span>{item.title}</span>
                   </div>
                 </li>
               ))}

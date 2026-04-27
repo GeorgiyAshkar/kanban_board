@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -23,7 +23,7 @@ from app.schemas.schemas import (
     TaskRead,
 )
 from app.services.history import log_history
-from app.services.tasks import apply_task_patch
+from app.services.tasks import touch_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -237,6 +237,7 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     task = Task(**payload.model_dump())
     task.created_at = datetime.utcnow()
     task.updated_at = task.created_at
+    task.row_version = 1
 
     selected_column: BoardColumn | None = None
     if task.board_column_id is not None:
@@ -296,10 +297,80 @@ def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)):
     if not patch_data:
         return task
 
-    apply_task_patch(db, task, patch_data)
+    expected_row_version = patch_data.pop("row_version", None)
+    if expected_row_version is None:
+        raise HTTPException(status_code=428, detail="row_version is required for optimistic locking")
+    if expected_row_version != task.row_version:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Task has been modified by another operation",
+                "current_row_version": task.row_version,
+            },
+        )
+    if not patch_data:
+        return task
+
+    changed_fields: list[tuple[str, object | None, object | None]] = []
+    for field, new_value in patch_data.items():
+        old_value = getattr(task, field)
+        if old_value == new_value:
+            continue
+        changed_fields.append((field, old_value, new_value))
+
+    if not changed_fields:
+        return task
+
+    update_values: dict[str, object | None] = {field: new_value for field, _, new_value in changed_fields}
+    if "is_done" in update_values:
+        is_done_value = update_values["is_done"]
+        if is_done_value is True and task.done_at is None:
+            update_values["done_at"] = datetime.utcnow()
+        elif is_done_value is False:
+            update_values["done_at"] = None
+
+    update_values["updated_at"] = datetime.utcnow()
+    update_values["row_version"] = task.row_version + 1
+
+    stmt = (
+        update(Task)
+        .where(Task.id == task_id, Task.row_version == expected_row_version)
+        .values(**update_values)
+    )
+    result = db.execute(stmt)
+    if result.rowcount != 1:
+        db.rollback()
+        current_task = db.get(Task, task_id)
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Task has been modified by another operation",
+                "current_row_version": current_task.row_version if current_task else None,
+            },
+        )
+
+    for field, old_value, new_value in changed_fields:
+        action_type = {
+            "title": "title_changed",
+            "description": "description_changed",
+            "status": "status_changed",
+            "priority": "priority_changed",
+            "deadline_at": "deadline_changed",
+            "planned_return_at": "planned_return_changed",
+            "board_column_id": "column_changed",
+            "is_done": "task_completed",
+        }.get(field, f"{field}_changed")
+        log_history(
+            db,
+            task_id=task_id,
+            action_type=action_type,
+            field_name=field,
+            old_value=str(old_value) if old_value is not None else None,
+            new_value=str(new_value) if new_value is not None else None,
+        )
+
     db.commit()
-    db.refresh(task)
-    return task
+    return _get_task_or_404(db, task_id)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -314,7 +385,7 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
 def archive_task(task_id: int, db: Session = Depends(get_db)):
     task = _get_task_or_404(db, task_id)
     task.is_archived = True
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     log_history(db, task_id=task.id, action_type="task_archived")
     db.commit()
     db.refresh(task)
@@ -325,7 +396,7 @@ def archive_task(task_id: int, db: Session = Depends(get_db)):
 def restore_task(task_id: int, db: Session = Depends(get_db)):
     task = _get_task_or_404(db, task_id)
     task.is_archived = False
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
     log_history(db, task_id=task.id, action_type="task_restored")
     db.commit()
     db.refresh(task)
@@ -343,7 +414,7 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
 
     task.is_done = True
     task.done_at = datetime.utcnow()
-    task.updated_at = task.done_at
+    touch_task(task, at=task.done_at)
     log_history(db, task_id=task.id, action_type="task_completed")
     db.commit()
     db.refresh(task)
@@ -365,7 +436,7 @@ def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db)):
         task.position = payload.position
     task.status = target_column.canonical_status
 
-    task.updated_at = datetime.utcnow()
+    touch_task(task)
 
     if old_column_id != task.board_column_id:
         log_history(

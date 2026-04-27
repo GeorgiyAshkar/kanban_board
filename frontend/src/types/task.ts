@@ -10,6 +10,7 @@ export interface Task {
   planned_return_at: string | null;
   created_at: string;
   updated_at: string;
+  row_version: number;
   is_archived: boolean;
   is_done: boolean;
   done_at: string | null;
@@ -34,6 +35,8 @@ export interface BoardColumn {
   canonical_status: string;
   position: number;
   color: string;
+  wip_limit?: number | null;
+  sla_hours?: number | null;
   is_system: boolean;
 }
 
