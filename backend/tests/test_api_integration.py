@@ -280,6 +280,43 @@ def test_patch_task_with_same_values_keeps_row_version(client: TestClient) -> No
     assert noop_patch.json()['row_version'] == row_version
 
 
+def test_columns_support_wip_limit_and_sla_hours_settings(client: TestClient) -> None:
+    created = client.post(
+        '/columns',
+        json={
+            'name': 'Flow control',
+            'canonical_status': 'in_progress',
+            'position': 99,
+            'wip_limit': 3,
+            'sla_hours': 24,
+            'is_system': False,
+        },
+    )
+    assert created.status_code == 201
+    column = created.json()
+    column_id = column['id']
+    assert column['wip_limit'] == 3
+    assert column['sla_hours'] == 24
+
+    updated = client.patch(
+        f'/columns/{column_id}',
+        json={'wip_limit': 5, 'sla_hours': 48},
+    )
+    assert updated.status_code == 200
+    payload = updated.json()
+    assert payload['wip_limit'] == 5
+    assert payload['sla_hours'] == 48
+
+    cleared = client.patch(
+        f'/columns/{column_id}',
+        json={'wip_limit': None, 'sla_hours': None},
+    )
+    assert cleared.status_code == 200
+    payload = cleared.json()
+    assert payload['wip_limit'] is None
+    assert payload['sla_hours'] is None
+
+
 def test_deadline_automation_escalates_priority_and_creates_reminder(client: TestClient) -> None:
     now = datetime.utcnow()
     created = client.post(

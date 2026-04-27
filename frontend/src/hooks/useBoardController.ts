@@ -383,6 +383,14 @@ export const useBoardController = () => {
         await patchColumn(columnId, { color });
         await refreshBoardData();
       },
+      updateColumnWipLimit: async (columnId: number, value: number | null) => {
+        await patchColumn(columnId, { wip_limit: value });
+        await refreshBoardData();
+      },
+      updateColumnSlaHours: async (columnId: number, value: number | null) => {
+        await patchColumn(columnId, { sla_hours: value });
+        await refreshBoardData();
+      },
       createTag: async (name: string, color: string) => {
         await createTag(name, color);
         await refreshBoardData();

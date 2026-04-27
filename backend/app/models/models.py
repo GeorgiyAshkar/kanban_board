@@ -185,4 +185,6 @@ class BoardColumn(Base):
     canonical_status = Column(String(64), default="inbox", nullable=False)
     position = Column(Integer, default=0, nullable=False)
     color = Column(String(32), default="#e2e8f0")
+    wip_limit = Column(Integer, nullable=True)
+    sla_hours = Column(Integer, nullable=True)
     is_system = Column(Boolean, default=True, nullable=False)

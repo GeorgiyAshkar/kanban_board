@@ -95,6 +95,8 @@ export default function App() {
             onCreateColumn={actions.createColumn}
             onRenameColumn={actions.renameColumn}
             onUpdateColumnColor={actions.updateColumnColor}
+            onUpdateColumnWipLimit={actions.updateColumnWipLimit}
+            onUpdateColumnSlaHours={actions.updateColumnSlaHours}
             onCreateTag={actions.createTag}
             onUpdateTag={actions.updateTag}
           />

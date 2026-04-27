@@ -166,6 +166,8 @@ class ColumnCreate(BaseModel):
     canonical_status: str = "inbox"
     position: int = 0
     color: str = "#e2e8f0"
+    wip_limit: Optional[int] = Field(default=None, ge=1, le=999)
+    sla_hours: Optional[int] = Field(default=None, ge=1, le=720)
     is_system: bool = False
 
 
@@ -174,6 +176,8 @@ class ColumnPatch(BaseModel):
     canonical_status: Optional[str] = None
     position: Optional[int] = None
     color: Optional[str] = None
+    wip_limit: Optional[int] = Field(default=None, ge=1, le=999)
+    sla_hours: Optional[int] = Field(default=None, ge=1, le=720)
 
 
 class ColumnRead(BaseModel):
@@ -182,6 +186,8 @@ class ColumnRead(BaseModel):
     canonical_status: str
     position: int
     color: str
+    wip_limit: Optional[int] = None
+    sla_hours: Optional[int] = None
     is_system: bool
 
     class Config:

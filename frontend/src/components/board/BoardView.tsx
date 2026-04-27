@@ -50,6 +50,7 @@ export function BoardView({
   taskTagsByTaskId,
   taskChecklistByTaskId,
 }: Props) {
+  const nowMs = Date.now();
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
   const grouped = useMemo(() => {
     const map = new Map<number, Task[]>();
@@ -71,6 +72,19 @@ export function BoardView({
   return (
     <div className="columns">
       {columns.map((column) => (
+        (() => {
+          const columnTasks = grouped.get(column.id) ?? [];
+          const wipLimit = column.wip_limit ?? null;
+          const isWipExceeded = wipLimit != null && columnTasks.length > wipLimit;
+          const slaHours = column.sla_hours ?? null;
+          const slaBreaches = slaHours == null
+            ? 0
+            : columnTasks.filter((task) => {
+              if (task.is_done || task.is_archived) return false;
+              const updatedAtMs = new Date(task.updated_at).getTime();
+              return nowMs - updatedAtMs > slaHours * 60 * 60 * 1000;
+            }).length;
+          return (
         <section
           key={column.id}
           className="column"
@@ -83,12 +97,32 @@ export function BoardView({
             await onMoveTask(taskId, column.id, targetSize);
           }}
         >
-          <h3>{column.name}</h3>
-          {(grouped.get(column.id) ?? []).map((task) => {
+          <h3>
+            {column.name}{' '}
+            <span className="muted">
+              {columnTasks.length}
+              {wipLimit != null ? ` / ${wipLimit}` : ''}
+            </span>
+            {isWipExceeded && (
+              <span className="badge" style={{ marginLeft: 8, background: '#dc2626' }}>
+                WIP limit
+              </span>
+            )}
+            {slaBreaches > 0 && (
+              <span className="badge" style={{ marginLeft: 8, background: '#7c3aed' }}>
+                SLA: {slaBreaches}
+              </span>
+            )}
+          </h3>
+          {columnTasks.map((task) => {
             const tags = taskTagsByTaskId[task.id] ?? [];
             const checklist = taskChecklistByTaskId[task.id] ?? [];
             const checklistDone = checklist.filter((item) => item.is_done).length;
             const emojiHint = task.emoji ? emojiConfig[task.emoji as keyof typeof emojiConfig] : undefined;
+            const taskSlaBreached = slaHours != null
+              && !task.is_done
+              && !task.is_archived
+              && (nowMs - new Date(task.updated_at).getTime() > slaHours * 60 * 60 * 1000);
             return (
               <article
                 key={task.id}
@@ -154,6 +188,7 @@ export function BoardView({
                   <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
                   <div className="badges">
                     {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
+                    {taskSlaBreached && <span className="badge" style={{ background: '#7c3aed' }}>SLA просрочен</span>}
                   </div>
                   {checklist.length > 0 && (
                     <div className="card-checklist">
@@ -183,6 +218,8 @@ export function BoardView({
             );
           })}
         </section>
+          );
+        })()
       ))}
     </div>
   );

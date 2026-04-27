@@ -35,6 +35,8 @@ export interface BoardColumn {
   canonical_status: string;
   position: number;
   color: string;
+  wip_limit?: number | null;
+  sla_hours?: number | null;
   is_system: boolean;
 }
 
