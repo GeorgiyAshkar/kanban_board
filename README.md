@@ -56,6 +56,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+### Эксплуатационный контракт backend (ops)
+
+После старта backend доступны стабильные ops-эндпоинты:
+
+- `GET /health` — liveness-проба (`{"status":"ok"}`).
+- `GET /ready` — readiness-проба с проверкой БД и `db_ping_ms`.
+- `GET /metrics` — метрики в формате Prometheus text exposition.
+
 Для доступа к backend из локальной сети используйте:
 
 ```bash
