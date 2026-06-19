@@ -2,9 +2,9 @@ import type { HistoryItem } from '../../types/task';
 
 export function HistoryFeed({ items }: { items: HistoryItem[] }) {
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
+    <div className="history-feed">
       {items.map((item) => (
-        <div key={item.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10 }}>
+        <div key={item.id} className="history-feed-card">
           <div>{new Date(item.created_at).toLocaleString()}</div>
           <div>{item.action_type}</div>
           <small>

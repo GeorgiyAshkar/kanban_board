@@ -164,11 +164,10 @@ export function SettingsPage({
             </button>
           </div>
           {backupPreview && (
-            <div className="settings-hint" style={{ marginTop: 6 }}>
+            <div className="settings-hint settings-preview">
               Dry-run: tasks={backupPreview.tasks_to_import}, tags={backupPreview.tags_to_create}, columns={backupPreview.columns_to_create}
               <button
                 className="small-btn"
-                style={{ marginLeft: 8 }}
                 onClick={async () => {
                   if (!loadedBackup) return;
                   const result = await onImportBackup(loadedBackup, importMode);

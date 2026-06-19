@@ -62,10 +62,20 @@ export function TaskDrawer({
   const [assigneeEmail, setAssigneeEmail] = useState('');
   const [assigneeOrg, setAssigneeOrg] = useState('');
   const [draftEmoji, setDraftEmoji] = useState('');
+  const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
+  const [timerNow, setTimerNow] = useState(() => Date.now());
 
+  const timerElapsedMinutes = timerStartedAt ? Math.floor((timerNow - timerStartedAt) / 60000) : 0;
   const freeTags = useMemo(() => allTags.filter((tag) => !taskTags.some((tt) => tt.id === tag.id)), [allTags, taskTags]);
 
   useEffect(() => {
+    if (!timerStartedAt) return undefined;
+    const id = window.setInterval(() => setTimerNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [timerStartedAt]);
+
+  useEffect(() => {
+    setTimerStartedAt(null);
     if (!task) return;
     setDraftTitle(task.title);
     setDraftDescription(task.description);
@@ -160,6 +170,27 @@ export function TaskDrawer({
               onChange={(e) => setDraftSpentMinutes(e.target.value)}
               placeholder="Затрачено, мин"
             />
+          </div>
+          <div className="time-tracker-panel">
+            <div>
+              <strong>Учет времени</strong>
+              <p className="muted">Таймер помогает фиксировать фактические трудозатраты по карточке.</p>
+            </div>
+            <span className="time-pill">Сессия: {timerElapsedMinutes} мин</span>
+            {!timerStartedAt ? (
+              <button className="small-btn" onClick={() => setTimerStartedAt(Date.now())}>Старт</button>
+            ) : (
+              <button
+                className="small-btn"
+                onClick={() => {
+                  const nextSpent = Number(draftSpentMinutes || 0) + Math.max(1, timerElapsedMinutes);
+                  setDraftSpentMinutes(String(nextSpent));
+                  setTimerStartedAt(null);
+                }}
+              >
+                Записать сессию
+              </button>
+            )}
           </div>
           <h4 style={{ margin: '8px 0 0' }}>Исполнитель</h4>
           <div className="row-fields">
