@@ -27,6 +27,9 @@ export interface Task {
   assignee_email?: string | null;
   assignee_org?: string | null;
   emoji?: string | null;
+  is_blocked?: boolean;
+  block_reason?: string | null;
+  blocker_task_id?: number | null;
 }
 
 export interface BoardColumn {

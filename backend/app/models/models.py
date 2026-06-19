@@ -63,6 +63,9 @@ class Task(Base):
     assignee_email = Column(String(255), nullable=True)
     assignee_org = Column(String(255), nullable=True)
     emoji = Column(String(16), nullable=True)
+    is_blocked = Column(Boolean, default=False, nullable=False)
+    block_reason = Column(Text, nullable=True)
+    blocker_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
 
     history = relationship("TaskHistory", back_populates="task", cascade="all, delete-orphan")
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")

@@ -57,7 +57,7 @@ export function BoardPage({
   taskChecklistByTaskId,
   onArchiveTask,
 }: Props) {
-  const [laneMode, setLaneMode] = useState<'none' | 'priority' | 'assignee' | 'project'>('none');
+  const [laneMode, setLaneMode] = useState<'none' | 'priority' | 'assignee' | 'project' | 'blocked'>('none');
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return tasks;
@@ -65,6 +65,10 @@ export function BoardPage({
   }, [tasks, query]);
 
   const activeTask = tasks.find((t) => t.id === activeTaskId);
+  const projectOptions = useMemo(
+    () => Array.from(new Set(tasks.map((task) => task.project_id?.trim()).filter((project): project is string => Boolean(project)))).sort((a, b) => a.localeCompare(b, 'ru')),
+    [tasks],
+  );
 
   return (
     <div className="board-layout">
@@ -93,6 +97,7 @@ export function BoardPage({
         onSaveTask={onSaveTask}
         taskTags={taskTags}
         allTags={allTags}
+        projectOptions={projectOptions}
         onAddTag={onAddTag}
         onRemoveTag={onRemoveTag}
         onCreateTagAndAdd={onCreateTagAndAdd}
