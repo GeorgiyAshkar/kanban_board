@@ -13,6 +13,7 @@ const fmt = (value?: number | null) => (value == null ? '—' : `${value.toFixed
 
 export function ReportsPage({ report, loading, days, bucket, onDaysChange, onBucketChange }: Props) {
   const maxCompleted = Math.max(...(report?.trend.map((item) => item.completed_tasks) ?? [1]));
+  const maxFlow = Math.max(...(report?.trend.flatMap((item) => [item.created_tasks, item.completed_tasks, item.wip_open_tasks, item.overdue_open_tasks]) ?? [1]));
 
   return (
     <section className="reports-page">
@@ -61,6 +62,32 @@ export function ReportsPage({ report, loading, days, bucket, onDaysChange, onBuc
               <h4>Velocity</h4>
               <p>{report.summary.velocity_per_period.toFixed(2)} / период</p>
             </article>
+          </div>
+
+
+          <div className="settings-card reports-chart">
+            <h4>Накопительный поток и загрузка</h4>
+            <div className="flow-list">
+              {report.trend.map((item) => (
+                <div key={`flow-${item.period_start}`} className="flow-row">
+                  <div className="trend-label">
+                    {new Date(item.period_start).toLocaleDateString()} — {new Date(item.period_end).toLocaleDateString()}
+                  </div>
+                  <div className="flow-bars">
+                    <span className="flow-bar created" style={{ width: `${(item.created_tasks / maxFlow) * 100}%` }} title={`Создано: ${item.created_tasks}`} />
+                    <span className="flow-bar completed" style={{ width: `${(item.completed_tasks / maxFlow) * 100}%` }} title={`Завершено: ${item.completed_tasks}`} />
+                    <span className="flow-bar wip" style={{ width: `${(item.wip_open_tasks / maxFlow) * 100}%` }} title={`WIP: ${item.wip_open_tasks}`} />
+                    <span className="flow-bar overdue" style={{ width: `${(item.overdue_open_tasks / maxFlow) * 100}%` }} title={`Просрочено: ${item.overdue_open_tasks}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="report-legend">
+              <span className="legend-dot created" /> Создано
+              <span className="legend-dot completed" /> Завершено
+              <span className="legend-dot wip" /> WIP
+              <span className="legend-dot overdue" /> Просрочки
+            </div>
           </div>
 
           <div className="settings-card reports-chart">

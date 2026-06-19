@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { BoardView } from '../components/board/BoardView';
 import { TaskDrawer } from '../components/task/TaskDrawer';
 import type { BoardColumn, ChecklistItem, HistoryItem, Task, TaskComment, TaskReminder } from '../types/task';
@@ -57,6 +57,7 @@ export function BoardPage({
   taskChecklistByTaskId,
   onArchiveTask,
 }: Props) {
+  const [laneMode, setLaneMode] = useState<'none' | 'priority' | 'assignee' | 'project'>('none');
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return tasks;
@@ -69,6 +70,8 @@ export function BoardPage({
     <div className="board-layout">
       <BoardView
         columns={columns}
+        laneMode={laneMode}
+        onLaneModeChange={setLaneMode}
         tasks={visibleTasks}
         onOpenTask={setActiveTaskId}
         onMoveTask={onMoveTask}
