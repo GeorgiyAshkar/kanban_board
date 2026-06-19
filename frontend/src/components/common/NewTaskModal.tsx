@@ -60,10 +60,10 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
 
           <label>Класс обслуживания</label>
           <select className="select-styled" value={serviceClass} onChange={(e) => setServiceClass(e.target.value as TaskServiceClass)}>
-            <option value="standard">Standard</option>
-            <option value="fixed_date">Fixed date</option>
-            <option value="expedite">Expedite</option>
-            <option value="intangible">Intangible</option>
+            <option value="standard">Стандартный</option>
+            <option value="fixed_date">Фиксированная дата</option>
+            <option value="expedite">Срочный</option>
+            <option value="intangible">Улучшение</option>
           </select>
 
           <label>Тип работ</label>

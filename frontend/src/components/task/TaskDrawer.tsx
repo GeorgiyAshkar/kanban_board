@@ -128,8 +128,8 @@ export function TaskDrawer({
           )}
           {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
           {task.is_blocked && <span className="badge badge-danger">Заблокирована</span>}
-          {task.service_class === 'expedite' && <span className="badge badge-danger">Expedite</span>}
-          {task.service_class === 'fixed_date' && <span className="badge badge-accent">Fixed date</span>}
+          {task.service_class === 'expedite' && <span className="badge badge-danger">Срочный</span>}
+          {task.service_class === 'fixed_date' && <span className="badge badge-accent">Фиксированная дата</span>}
         </div>
       </div>
 
@@ -155,10 +155,10 @@ export function TaskDrawer({
           </div>
           <div className="row-fields">
             <select className="select-styled" value={draftServiceClass} onChange={(e) => setDraftServiceClass(e.target.value as Task['service_class'])}>
-              <option value="standard">Standard — обычный поток</option>
-              <option value="fixed_date">Fixed date — срок критичен</option>
-              <option value="expedite">Expedite — срочно</option>
-              <option value="intangible">Intangible — улучшение</option>
+              <option value="standard">Стандартный — обычный поток</option>
+              <option value="fixed_date">Фиксированная дата — срок критичен</option>
+              <option value="expedite">Срочный — вне очереди</option>
+              <option value="intangible">Улучшение — без жесткого срока</option>
             </select>
             <select className="select-styled" value={draftWorkType} onChange={(e) => setDraftWorkType(e.target.value as Task['work_type'])}>
               <option value="feature">Фича</option>
@@ -168,7 +168,7 @@ export function TaskDrawer({
               <option value="research">Исследование</option>
             </select>
           </div>
-          <textarea value={draftPolicyNote} onChange={(e) => setDraftPolicyNote(e.target.value)} placeholder="Политика карточки / Definition of Done / SLA-комментарий" rows={2} />
+          <textarea value={draftPolicyNote} onChange={(e) => setDraftPolicyNote(e.target.value)} placeholder="Политика карточки / критерии готовности / комментарий по сроку" rows={2} />
           <select className="select-styled" value={draftEmoji} onChange={(e) => setDraftEmoji(e.target.value)}>
             <option value="">Эмодзи: не выбрано</option>
             {Object.entries(emojiConfig).map(([emoji, label]) => (
