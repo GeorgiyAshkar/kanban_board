@@ -105,6 +105,8 @@ def analytics_report(
         completed_tasks=completed_tasks,
         overdue_open_tasks=len([task for task in tasks if task.deadline_at and task.deadline_at < now and not task.is_done]),
         wip_open_tasks=len([task for task in tasks if not task.is_done]),
+        blocked_open_tasks=len([task for task in tasks if task.is_blocked and not task.is_done]),
+        flow_efficiency_percent=(completed_tasks / (completed_tasks + len([task for task in tasks if task.is_blocked and not task.is_done])) * 100) if (completed_tasks + len([task for task in tasks if task.is_blocked and not task.is_done])) else None,
         velocity_per_period=(completed_tasks / len(buckets)) if buckets else 0,
         avg_lead_time_hours=(sum(lead_values) / len(lead_values)) if lead_values else None,
         avg_cycle_time_hours=(sum(cycle_values) / len(cycle_values)) if cycle_values else None,

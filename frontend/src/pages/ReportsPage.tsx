@@ -59,6 +59,14 @@ export function ReportsPage({ report, loading, days, bucket, onDaysChange, onBuc
               <p>{report.summary.overdue_open_tasks}</p>
             </article>
             <article className="settings-card">
+              <h4>Блокировки</h4>
+              <p>{report.summary.blocked_open_tasks}</p>
+            </article>
+            <article className="settings-card">
+              <h4>Flow efficiency</h4>
+              <p>{report.summary.flow_efficiency_percent == null ? '—' : `${report.summary.flow_efficiency_percent.toFixed(1)}%`}</p>
+            </article>
+            <article className="settings-card">
               <h4>Velocity</h4>
               <p>{report.summary.velocity_per_period.toFixed(2)} / период</p>
             </article>

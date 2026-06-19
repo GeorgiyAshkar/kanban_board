@@ -66,6 +66,9 @@ def _build_backup_payload(db: Session) -> BackupPayload:
             assignee_email=task.assignee_email,
             assignee_org=task.assignee_org,
             emoji=task.emoji,
+            is_blocked=task.is_blocked,
+            block_reason=task.block_reason,
+            blocker_task_id=task.blocker_task_id,
             is_done=task.is_done,
             is_archived=task.is_archived,
             done_at=task.done_at,
@@ -109,6 +112,9 @@ def export_csv(db: Session = Depends(get_db)):
             "board_column_name",
             "is_done",
             "is_archived",
+            "is_blocked",
+            "block_reason",
+            "blocker_task_id",
             "deadline_at",
             "planned_return_at",
             "done_at",
@@ -127,6 +133,9 @@ def export_csv(db: Session = Depends(get_db)):
                 task.board_column_name or "",
                 task.is_done,
                 task.is_archived,
+                task.is_blocked,
+                task.block_reason or "",
+                task.blocker_task_id or "",
                 task.deadline_at.isoformat() if task.deadline_at else "",
                 task.planned_return_at.isoformat() if task.planned_return_at else "",
                 task.done_at.isoformat() if task.done_at else "",
@@ -150,9 +159,9 @@ def export_archive(db: Session = Depends(get_db)):
 
     tasks_csv_buffer = io.StringIO()
     writer = csv.writer(tasks_csv_buffer)
-    writer.writerow(["title", "description", "status", "priority", "board_column_name", "tags"])
+    writer.writerow(["title", "description", "status", "priority", "board_column_name", "is_blocked", "block_reason", "blocker_task_id", "tags"])
     for task in payload.tasks:
-        writer.writerow([task.title, task.description, task.status, task.priority, task.board_column_name or "", ",".join(task.tags)])
+        writer.writerow([task.title, task.description, task.status, task.priority, task.board_column_name or "", task.is_blocked, task.block_reason or "", task.blocker_task_id or "", ",".join(task.tags)])
 
     with zipfile.ZipFile(archive_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("backup.json", json.dumps(payload.model_dump(mode="json"), ensure_ascii=False, indent=2))
@@ -246,6 +255,9 @@ def import_backup(payload: BackupImportRequest, db: Session = Depends(get_db)):
             assignee_email=task.assignee_email,
             assignee_org=task.assignee_org,
             emoji=task.emoji,
+            is_blocked=task.is_blocked,
+            block_reason=task.block_reason,
+            blocker_task_id=task.blocker_task_id,
             is_done=task.is_done,
             is_archived=task.is_archived,
             done_at=task.done_at,

@@ -62,6 +62,9 @@ export function TaskDrawer({
   const [assigneeEmail, setAssigneeEmail] = useState('');
   const [assigneeOrg, setAssigneeOrg] = useState('');
   const [draftEmoji, setDraftEmoji] = useState('');
+  const [draftIsBlocked, setDraftIsBlocked] = useState(false);
+  const [draftBlockReason, setDraftBlockReason] = useState('');
+  const [draftBlockerTaskId, setDraftBlockerTaskId] = useState('');
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [timerNow, setTimerNow] = useState(() => Date.now());
 
@@ -94,6 +97,9 @@ export function TaskDrawer({
     setAssigneeEmail(task.assignee_email ?? '');
     setAssigneeOrg(task.assignee_org ?? '');
     setDraftEmoji(task.emoji ?? '');
+    setDraftIsBlocked(Boolean(task.is_blocked));
+    setDraftBlockReason(task.block_reason ?? '');
+    setDraftBlockerTaskId(task.blocker_task_id != null ? String(task.blocker_task_id) : '');
   }, [task]);
 
   if (!task) {
@@ -113,6 +119,7 @@ export function TaskDrawer({
             </span>
           )}
           {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
+          {task.is_blocked && <span className="badge badge-danger">Заблокирована</span>}
         </div>
       </div>
 
@@ -192,6 +199,25 @@ export function TaskDrawer({
               </button>
             )}
           </div>
+          <div className="blocker-panel">
+            <label className="blocker-toggle">
+              <input type="checkbox" checked={draftIsBlocked} onChange={(e) => setDraftIsBlocked(e.target.checked)} />
+              Блокировка карточки
+            </label>
+            <textarea
+              value={draftBlockReason}
+              onChange={(e) => setDraftBlockReason(e.target.value)}
+              placeholder="Причина блокировки: нет согласования, ждем внешнюю команду…"
+              rows={2}
+            />
+            <input
+              type="number"
+              min={1}
+              value={draftBlockerTaskId}
+              onChange={(e) => setDraftBlockerTaskId(e.target.value)}
+              placeholder="ID карточки-блокера (опционально)"
+            />
+          </div>
           <h4 style={{ margin: '8px 0 0' }}>Исполнитель</h4>
           <div className="row-fields">
             <input value={assigneeLastName} onChange={(e) => setAssigneeLastName(e.target.value)} placeholder="Фамилия" />
@@ -225,6 +251,9 @@ export function TaskDrawer({
                 assignee_email: assigneeEmail || null,
                 assignee_org: assigneeOrg || null,
                 emoji: draftEmoji || null,
+                is_blocked: draftIsBlocked,
+                block_reason: draftIsBlocked && draftBlockReason ? draftBlockReason : null,
+                blocker_task_id: draftIsBlocked && draftBlockerTaskId ? Number(draftBlockerTaskId) : null,
               });
             }}
           >

@@ -28,6 +28,9 @@ class TaskBase(BaseModel):
     assignee_email: Optional[str] = None
     assignee_org: Optional[str] = None
     emoji: Optional[str] = None
+    is_blocked: bool = False
+    block_reason: Optional[str] = None
+    blocker_task_id: Optional[int] = None
 
 
 class TaskCreate(TaskBase):
@@ -56,6 +59,9 @@ class TaskPatch(BaseModel):
     assignee_email: Optional[str] = None
     assignee_org: Optional[str] = None
     emoji: Optional[str] = None
+    is_blocked: Optional[bool] = None
+    block_reason: Optional[str] = None
+    blocker_task_id: Optional[int] = None
 
 
 class TaskRead(TaskBase):
@@ -286,6 +292,8 @@ class AnalyticsSummary(BaseModel):
     completed_tasks: int
     overdue_open_tasks: int
     wip_open_tasks: int
+    blocked_open_tasks: int
+    flow_efficiency_percent: float | None = None
     velocity_per_period: float
     avg_lead_time_hours: float | None = None
     avg_cycle_time_hours: float | None = None
@@ -324,6 +332,9 @@ class BackupTaskItem(BaseModel):
     assignee_email: str | None = None
     assignee_org: str | None = None
     emoji: str | None = None
+    is_blocked: bool = False
+    block_reason: str | None = None
+    blocker_task_id: int | None = None
     is_done: bool = False
     is_archived: bool = False
     done_at: datetime | None = None

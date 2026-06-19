@@ -347,6 +347,9 @@ body { margin: 0; background: var(--app-bg); overflow-x: hidden; -webkit-text-si
 .time-pill.overrun { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
 .time-tracker-panel { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; border: 1px solid var(--surface-border); border-radius: var(--radius-md); background: var(--surface-bg); padding: 10px; }
 .time-tracker-panel p { margin: 2px 0 0; }
+.blocker-panel { display: grid; gap: 8px; border: 1px solid #fecaca; border-radius: var(--radius-md); background: #fff7f7; padding: 10px; }
+.blocker-toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: #991b1b; }
+.blocker-toggle input { width: auto; }
 .flow-list { display: grid; gap: 8px; }
 .flow-row { display: grid; grid-template-columns: 280px 1fr; gap: 8px; align-items: center; }
 .flow-bars { display: grid; gap: 3px; }

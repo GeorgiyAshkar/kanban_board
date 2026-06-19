@@ -56,6 +56,8 @@ export interface AnalyticsSummary {
   completed_tasks: number;
   overdue_open_tasks: number;
   wip_open_tasks: number;
+  blocked_open_tasks: number;
+  flow_efficiency_percent?: number | null;
   velocity_per_period: number;
   avg_lead_time_hours?: number | null;
   avg_cycle_time_hours?: number | null;

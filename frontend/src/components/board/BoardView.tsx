@@ -222,7 +222,9 @@ export function BoardView({
                 <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
                 <div className="badges">
                   {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
+                  {task.is_blocked && <span className="badge badge-danger" title={task.block_reason ?? 'Задача заблокирована'}>Блокер</span>}
                   {taskSlaBreached && <span className="badge badge-accent">SLA просрочен</span>}
+                  {task.is_blocked && task.block_reason && <span className="muted">🚧 {task.block_reason}</span>}
                   {estimate > 0 && (
                     <span className={`time-pill ${timeOverrun ? 'overrun' : ''}`}>⏱ {spent}/{estimate} мин</span>
                   )}
