@@ -55,6 +55,7 @@ export const useTaskMutations = ({ activeTaskId, setActiveTaskId }: UseTaskMutat
       priority,
       plannedReturnAt,
       deadlineAt,
+      projectId,
     }: {
       title: string;
       description: string;
@@ -63,6 +64,7 @@ export const useTaskMutations = ({ activeTaskId, setActiveTaskId }: UseTaskMutat
       priority: Task['priority'];
       plannedReturnAt: string | null;
       deadlineAt: string | null;
+      projectId: string | null;
     }) => {
       await createTaskWithPayload({
         title,
@@ -72,6 +74,7 @@ export const useTaskMutations = ({ activeTaskId, setActiveTaskId }: UseTaskMutat
         priority,
         planned_return_at: plannedReturnAt,
         deadline_at: deadlineAt,
+        project_id: projectId,
       });
       await refreshBoardData();
     },

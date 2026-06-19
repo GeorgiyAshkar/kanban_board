@@ -11,6 +11,7 @@ interface Props {
   history: HistoryItem[];
   taskTags: Tag[];
   allTags: Tag[];
+  projectOptions: string[];
   onAddComment: (text: string) => Promise<void>;
   onToggleChecklist: (itemId: number, isDone: boolean, taskId?: number) => Promise<void>;
   onAddChecklist: (title: string) => Promise<void>;
@@ -31,6 +32,7 @@ export function TaskDrawer({
   history,
   taskTags,
   allTags,
+  projectOptions,
   onAddComment,
   onToggleChecklist,
   onAddChecklist,
@@ -156,7 +158,27 @@ export function TaskDrawer({
             <input type="date" value={draftDeadlineAt} onChange={(e) => setDraftDeadlineAt(e.target.value)} />
           </div>
           <div className="row-fields">
-            <input value={draftProjectId} onChange={(e) => setDraftProjectId(e.target.value)} placeholder="Проект / ID проекта" />
+            <div className="project-field">
+              <input
+                list="task-project-options"
+                value={draftProjectId}
+                onChange={(e) => setDraftProjectId(e.target.value)}
+                placeholder="Проект / поток работ"
+              />
+              <datalist id="task-project-options">
+                {projectOptions.map((project) => (
+                  <option key={project} value={project} />
+                ))}
+              </datalist>
+              {projectOptions.length > 0 && (
+                <select className="select-styled" value="" onChange={(e) => e.target.value && setDraftProjectId(e.target.value)} aria-label="Выбрать существующий проект">
+                  <option value="">Выбрать проект…</option>
+                  {projectOptions.map((project) => (
+                    <option key={project} value={project}>{project}</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <label className="muted" style={{ alignSelf: 'center' }}>Цвет</label>
               <input type="color" value={draftColorMark || '#64748b'} onChange={(e) => setDraftColorMark(e.target.value)} />

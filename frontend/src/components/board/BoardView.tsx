@@ -3,7 +3,7 @@ import type { BoardColumn, ChecklistItem, Task } from '../../types/task';
 import type { Tag } from '../../api/tasks';
 import emojiConfig from '../../emoji_config.json';
 
-type LaneMode = 'none' | 'priority' | 'assignee' | 'project';
+type LaneMode = 'none' | 'priority' | 'assignee' | 'project' | 'blocked';
 
 interface Props {
   columns: BoardColumn[];
@@ -47,12 +47,14 @@ const getLaneName = (task: Task, laneMode: LaneMode): string => {
   if (laneMode === 'priority') return priorityLabel[task.priority] ?? task.priority;
   if (laneMode === 'assignee') return getAssigneeName(task);
   if (laneMode === 'project') return task.project_id?.trim() || 'Без проекта';
+  if (laneMode === 'blocked') return task.is_blocked ? 'Заблокировано' : 'Без блокировки';
   return 'Все задачи';
 };
 
 const buildLanes = (tasks: Task[], laneMode: LaneMode): string[] => {
   if (laneMode === 'none') return ['Все задачи'];
   if (laneMode === 'priority') return ['Критический', 'Высокий', 'Обычный', 'Низкий'].filter((lane) => tasks.some((task) => getLaneName(task, laneMode) === lane));
+  if (laneMode === 'blocked') return ['Заблокировано', 'Без блокировки'].filter((lane) => tasks.some((task) => getLaneName(task, laneMode) === lane));
   return Array.from(new Set(tasks.map((task) => getLaneName(task, laneMode)))).sort((a, b) => a.localeCompare(b, 'ru'));
 };
 
@@ -270,9 +272,10 @@ export function BoardView({
             <option value="priority">По приоритету</option>
             <option value="assignee">По исполнителю</option>
             <option value="project">По проекту</option>
+            <option value="blocked">По блокировкам</option>
           </select>
         </label>
-        <span className="muted">Дорожки помогают разделять поток по приоритетам, командам или проектам.</span>
+        <span className="muted">Дорожки помогают разделять поток по приоритетам, командам, проектам или блокировкам.</span>
       </div>
       {laneMode === 'none' ? (
         <div className="columns">

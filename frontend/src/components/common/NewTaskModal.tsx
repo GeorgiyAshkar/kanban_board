@@ -13,6 +13,7 @@ interface Props {
     priority: 'low' | 'normal' | 'high' | 'critical';
     plannedReturnAt: string | null;
     deadlineAt: string | null;
+    projectId: string | null;
   }) => Promise<void>;
 }
 
@@ -23,6 +24,7 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
   const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'critical'>('normal');
   const [plannedReturnAt, setPlannedReturnAt] = useState('');
   const [deadlineAt, setDeadlineAt] = useState('');
+  const [projectId, setProjectId] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +50,9 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
               <option key={col.id} value={col.id}>{col.name}</option>
             ))}
           </select>
+
+          <label>Проект</label>
+          <input value={projectId} onChange={(e) => setProjectId(e.target.value)} placeholder="Например: Website, CRM, Support" />
 
           <label>Приоритет</label>
           <select className="select-styled" value={priority} onChange={(e) => setPriority(e.target.value as 'low' | 'normal' | 'high' | 'critical')}>
@@ -79,12 +84,14 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
                 priority,
                 plannedReturnAt: plannedReturnAt ? new Date(plannedReturnAt).toISOString() : null,
                 deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : null,
+                projectId: projectId.trim() || null,
               });
               setTitle('');
               setDescription('');
               setPriority('normal');
               setPlannedReturnAt('');
               setDeadlineAt('');
+              setProjectId('');
               onClose();
             }}
           >
