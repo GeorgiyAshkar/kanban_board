@@ -104,12 +104,12 @@ export function BoardView({
               {wipLimit != null ? ` / ${wipLimit}` : ''}
             </span>
             {isWipExceeded && (
-              <span className="badge" style={{ marginLeft: 8, background: '#dc2626' }}>
+              <span className="badge badge-danger">
                 WIP limit
               </span>
             )}
             {slaBreaches > 0 && (
-              <span className="badge" style={{ marginLeft: 8, background: '#7c3aed' }}>
+              <span className="badge badge-accent">
                 SLA: {slaBreaches}
               </span>
             )}
@@ -188,7 +188,7 @@ export function BoardView({
                   <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
                   <div className="badges">
                     {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
-                    {taskSlaBreached && <span className="badge" style={{ background: '#7c3aed' }}>SLA просрочен</span>}
+                    {taskSlaBreached && <span className="badge badge-accent">SLA просрочен</span>}
                   </div>
                   {checklist.length > 0 && (
                     <div className="card-checklist">
