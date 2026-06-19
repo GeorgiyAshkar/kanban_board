@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { BoardColumn } from '../../types/task';
+import type { BoardColumn, TaskServiceClass, TaskWorkType } from '../../types/task';
 
 interface Props {
   open: boolean;
@@ -14,6 +14,8 @@ interface Props {
     plannedReturnAt: string | null;
     deadlineAt: string | null;
     projectId: string | null;
+    serviceClass: TaskServiceClass;
+    workType: TaskWorkType;
   }) => Promise<void>;
 }
 
@@ -25,6 +27,8 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
   const [plannedReturnAt, setPlannedReturnAt] = useState('');
   const [deadlineAt, setDeadlineAt] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [serviceClass, setServiceClass] = useState<TaskServiceClass>('standard');
+  const [workType, setWorkType] = useState<TaskWorkType>('feature');
 
   useEffect(() => {
     if (!open) return;
@@ -53,6 +57,23 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
 
           <label>Проект</label>
           <input value={projectId} onChange={(e) => setProjectId(e.target.value)} placeholder="Например: Website, CRM, Support" />
+
+          <label>Класс обслуживания</label>
+          <select className="select-styled" value={serviceClass} onChange={(e) => setServiceClass(e.target.value as TaskServiceClass)}>
+            <option value="standard">Standard</option>
+            <option value="fixed_date">Fixed date</option>
+            <option value="expedite">Expedite</option>
+            <option value="intangible">Intangible</option>
+          </select>
+
+          <label>Тип работ</label>
+          <select className="select-styled" value={workType} onChange={(e) => setWorkType(e.target.value as TaskWorkType)}>
+            <option value="feature">Фича</option>
+            <option value="bug">Баг</option>
+            <option value="support">Поддержка</option>
+            <option value="ops">Операции</option>
+            <option value="research">Исследование</option>
+          </select>
 
           <label>Приоритет</label>
           <select className="select-styled" value={priority} onChange={(e) => setPriority(e.target.value as 'low' | 'normal' | 'high' | 'critical')}>
@@ -85,6 +106,8 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
                 plannedReturnAt: plannedReturnAt ? new Date(plannedReturnAt).toISOString() : null,
                 deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : null,
                 projectId: projectId.trim() || null,
+                serviceClass,
+                workType,
               });
               setTitle('');
               setDescription('');
@@ -92,6 +115,8 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
               setPlannedReturnAt('');
               setDeadlineAt('');
               setProjectId('');
+              setServiceClass('standard');
+              setWorkType('feature');
               onClose();
             }}
           >

@@ -46,6 +46,8 @@ export interface AnalyticsTrendPoint {
   wip_open_tasks: number;
   avg_lead_time_hours?: number | null;
   avg_cycle_time_hours?: number | null;
+  service_class_counts: Record<string, number>;
+  work_type_counts: Record<string, number>;
 }
 
 export interface AnalyticsSummary {
@@ -61,6 +63,8 @@ export interface AnalyticsSummary {
   velocity_per_period: number;
   avg_lead_time_hours?: number | null;
   avg_cycle_time_hours?: number | null;
+  service_class_counts: Record<string, number>;
+  work_type_counts: Record<string, number>;
 }
 
 export interface AnalyticsReport {

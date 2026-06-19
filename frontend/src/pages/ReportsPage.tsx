@@ -72,6 +72,24 @@ export function ReportsPage({ report, loading, days, bucket, onDaysChange, onBuc
             </article>
           </div>
 
+          <div className="settings-card reports-chart">
+            <h4>Распределение активного WIP</h4>
+            <div className="report-breakdown">
+              <div>
+                <strong>Классы обслуживания</strong>
+                {Object.entries(report.summary.service_class_counts ?? {}).map(([name, count]) => (
+                  <p key={`sc-${name}`}><span className="badge">{name}</span> {count}</p>
+                ))}
+              </div>
+              <div>
+                <strong>Типы работ</strong>
+                {Object.entries(report.summary.work_type_counts ?? {}).map(([name, count]) => (
+                  <p key={`wt-${name}`}><span className="badge">{name}</span> {count}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+
 
           <div className="settings-card reports-chart">
             <h4>Накопительный поток и загрузка</h4>

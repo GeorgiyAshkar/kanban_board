@@ -67,6 +67,9 @@ export function TaskDrawer({
   const [draftIsBlocked, setDraftIsBlocked] = useState(false);
   const [draftBlockReason, setDraftBlockReason] = useState('');
   const [draftBlockerTaskId, setDraftBlockerTaskId] = useState('');
+  const [draftServiceClass, setDraftServiceClass] = useState<Task['service_class']>('standard');
+  const [draftWorkType, setDraftWorkType] = useState<Task['work_type']>('feature');
+  const [draftPolicyNote, setDraftPolicyNote] = useState('');
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [timerNow, setTimerNow] = useState(() => Date.now());
 
@@ -102,6 +105,9 @@ export function TaskDrawer({
     setDraftIsBlocked(Boolean(task.is_blocked));
     setDraftBlockReason(task.block_reason ?? '');
     setDraftBlockerTaskId(task.blocker_task_id != null ? String(task.blocker_task_id) : '');
+    setDraftServiceClass(task.service_class ?? 'standard');
+    setDraftWorkType(task.work_type ?? 'feature');
+    setDraftPolicyNote(task.policy_note ?? '');
   }, [task]);
 
   if (!task) {
@@ -122,6 +128,8 @@ export function TaskDrawer({
           )}
           {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
           {task.is_blocked && <span className="badge badge-danger">Заблокирована</span>}
+          {task.service_class === 'expedite' && <span className="badge badge-danger">Expedite</span>}
+          {task.service_class === 'fixed_date' && <span className="badge badge-accent">Fixed date</span>}
         </div>
       </div>
 
@@ -145,6 +153,22 @@ export function TaskDrawer({
               <option value="critical">Критический</option>
             </select>
           </div>
+          <div className="row-fields">
+            <select className="select-styled" value={draftServiceClass} onChange={(e) => setDraftServiceClass(e.target.value as Task['service_class'])}>
+              <option value="standard">Standard — обычный поток</option>
+              <option value="fixed_date">Fixed date — срок критичен</option>
+              <option value="expedite">Expedite — срочно</option>
+              <option value="intangible">Intangible — улучшение</option>
+            </select>
+            <select className="select-styled" value={draftWorkType} onChange={(e) => setDraftWorkType(e.target.value as Task['work_type'])}>
+              <option value="feature">Фича</option>
+              <option value="bug">Баг</option>
+              <option value="support">Поддержка</option>
+              <option value="ops">Операции</option>
+              <option value="research">Исследование</option>
+            </select>
+          </div>
+          <textarea value={draftPolicyNote} onChange={(e) => setDraftPolicyNote(e.target.value)} placeholder="Политика карточки / Definition of Done / SLA-комментарий" rows={2} />
           <select className="select-styled" value={draftEmoji} onChange={(e) => setDraftEmoji(e.target.value)}>
             <option value="">Эмодзи: не выбрано</option>
             {Object.entries(emojiConfig).map(([emoji, label]) => (
@@ -276,6 +300,9 @@ export function TaskDrawer({
                 is_blocked: draftIsBlocked,
                 block_reason: draftIsBlocked && draftBlockReason ? draftBlockReason : null,
                 blocker_task_id: draftIsBlocked && draftBlockerTaskId ? Number(draftBlockerTaskId) : null,
+                service_class: draftServiceClass,
+                work_type: draftWorkType,
+                policy_note: draftPolicyNote || null,
               });
             }}
           >

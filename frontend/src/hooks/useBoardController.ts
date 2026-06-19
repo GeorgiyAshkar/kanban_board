@@ -160,6 +160,9 @@ export const useBoardController = () => {
         priority,
         plannedReturnAt,
         deadlineAt,
+        projectId,
+        serviceClass,
+        workType,
       }: {
         title: string;
         description: string;
@@ -168,6 +171,9 @@ export const useBoardController = () => {
         priority: Task['priority'];
         plannedReturnAt: string | null;
         deadlineAt: string | null;
+        projectId?: string | null;
+        serviceClass?: Task['service_class'];
+        workType?: Task['work_type'];
       }) => {
         await createTaskWithPayload({
           title,
@@ -177,6 +183,9 @@ export const useBoardController = () => {
           priority,
           planned_return_at: plannedReturnAt,
           deadline_at: deadlineAt,
+          project_id: projectId ?? null,
+          service_class: serviceClass ?? 'standard',
+          work_type: workType ?? 'feature',
         });
         await refreshBoardData();
       },
