@@ -39,6 +39,7 @@ export default function App() {
         onApplySavedFilter={actions.applySavedFilter}
         onSaveCurrentFilter={actions.saveCurrentFilter}
         onDeleteSavedFilter={actions.deleteSavedFilter}
+        currentPage={state.page}
         setPage={state.setPage}
         onCreateTask={actions.openCreateTask}
       />

@@ -19,6 +19,7 @@ interface Props {
   onApplySavedFilter: (filterId: string) => void;
   onSaveCurrentFilter: (name: string) => void;
   onDeleteSavedFilter: (filterId: string) => void;
+  currentPage: 'board' | 'today' | 'history' | 'archive' | 'reports' | 'settings';
   setPage: (page: 'board' | 'today' | 'history' | 'archive' | 'reports' | 'settings') => void;
   onCreateTask: () => void;
 }
@@ -34,18 +35,19 @@ export function TopBar({
   onApplySavedFilter,
   onSaveCurrentFilter,
   onDeleteSavedFilter,
+  currentPage,
   setPage,
   onCreateTask,
 }: Props) {
   return (
     <header className="topbar">
       <span className="brand">▣</span>
-      <button className="title-link" onClick={() => setPage('board')}>Мои задачи</button>
-      <button onClick={() => setPage('today')}>Сегодня</button>
-      <button onClick={() => setPage('history')}>История</button>
-      <button onClick={() => setPage('archive')}>Архив</button>
-      <button onClick={() => setPage('reports')}>Отчеты</button>
-      <button onClick={() => setPage('settings')}>⚙</button>
+      <button className={`title-link ${currentPage === 'board' ? 'active' : ''}`} onClick={() => setPage('board')}>Мои задачи</button>
+      <button className={currentPage === 'today' ? 'active' : ''} onClick={() => setPage('today')}>Сегодня</button>
+      <button className={currentPage === 'history' ? 'active' : ''} onClick={() => setPage('history')}>История</button>
+      <button className={currentPage === 'archive' ? 'active' : ''} onClick={() => setPage('archive')}>Архив</button>
+      <button className={currentPage === 'reports' ? 'active' : ''} onClick={() => setPage('reports')}>Отчеты</button>
+      <button className={currentPage === 'settings' ? 'active' : ''} onClick={() => setPage('settings')} aria-label="Настройки">⚙</button>
       <button className="small-btn top-create" onClick={onCreateTask}>+ Новая задача</button>
       <div className="search">
         <input value={query} onChange={(e) => onQueryChange(e.target.value)} placeholder="Поиск..." />
