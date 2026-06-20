@@ -26,6 +26,21 @@ class TaskPriority(str, Enum):
     CRITICAL = "critical"
 
 
+class TaskServiceClass(str, Enum):
+    STANDARD = "standard"
+    FIXED_DATE = "fixed_date"
+    EXPEDITE = "expedite"
+    INTANGIBLE = "intangible"
+
+
+class TaskWorkType(str, Enum):
+    FEATURE = "feature"
+    BUG = "bug"
+    SUPPORT = "support"
+    OPS = "ops"
+    RESEARCH = "research"
+
+
 class ReminderRepeatType(str, Enum):
     NONE = "none"
     DAILY = "daily"
@@ -66,6 +81,9 @@ class Task(Base):
     is_blocked = Column(Boolean, default=False, nullable=False)
     block_reason = Column(Text, nullable=True)
     blocker_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
+    service_class = Column(String(32), default=TaskServiceClass.STANDARD.value, nullable=False)
+    work_type = Column(String(32), default=TaskWorkType.FEATURE.value, nullable=False)
+    policy_note = Column(Text, nullable=True)
 
     history = relationship("TaskHistory", back_populates="task", cascade="all, delete-orphan")
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")

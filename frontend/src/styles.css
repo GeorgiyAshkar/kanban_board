@@ -366,3 +366,9 @@ body { margin: 0; background: var(--app-bg); overflow-x: hidden; -webkit-text-si
   .time-tracker-panel, .flow-row { grid-template-columns: 1fr; }
   .swimlane-columns { grid-auto-columns: minmax(240px, 92vw); }
 }
+
+.report-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}

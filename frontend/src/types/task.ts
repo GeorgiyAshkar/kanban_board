@@ -1,4 +1,6 @@
 export type TaskPriority = 'low' | 'normal' | 'high' | 'critical';
+export type TaskServiceClass = 'standard' | 'fixed_date' | 'expedite' | 'intangible';
+export type TaskWorkType = 'feature' | 'bug' | 'support' | 'ops' | 'research';
 
 export interface Task {
   id: number;
@@ -30,6 +32,9 @@ export interface Task {
   is_blocked?: boolean;
   block_reason?: string | null;
   blocker_task_id?: number | null;
+  service_class?: TaskServiceClass;
+  work_type?: TaskWorkType;
+  policy_note?: string | null;
 }
 
 export interface BoardColumn {

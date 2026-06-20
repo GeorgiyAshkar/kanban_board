@@ -11,6 +11,21 @@ interface Props {
 
 const fmt = (value?: number | null) => (value == null ? '—' : `${value.toFixed(1)} ч`);
 
+const serviceClassLabels: Record<string, string> = {
+  standard: 'Стандартный',
+  fixed_date: 'Фиксированная дата',
+  expedite: 'Срочный',
+  intangible: 'Улучшение',
+};
+
+const workTypeLabels: Record<string, string> = {
+  feature: 'Фича',
+  bug: 'Баг',
+  support: 'Поддержка',
+  ops: 'Операции',
+  research: 'Исследование',
+};
+
 export function ReportsPage({ report, loading, days, bucket, onDaysChange, onBucketChange }: Props) {
   const maxCompleted = Math.max(...(report?.trend.map((item) => item.completed_tasks) ?? [1]));
   const maxFlow = Math.max(...(report?.trend.flatMap((item) => [item.created_tasks, item.completed_tasks, item.wip_open_tasks, item.overdue_open_tasks]) ?? [1]));
@@ -43,15 +58,15 @@ export function ReportsPage({ report, loading, days, bucket, onDaysChange, onBuc
         <>
           <div className="reports-grid">
             <article className="settings-card">
-              <h4>Lead time</h4>
+              <h4>Время выполнения</h4>
               <p>{fmt(report.summary.avg_lead_time_hours)}</p>
             </article>
             <article className="settings-card">
-              <h4>Cycle time</h4>
+              <h4>Время в работе</h4>
               <p>{fmt(report.summary.avg_cycle_time_hours)}</p>
             </article>
             <article className="settings-card">
-              <h4>WIP</h4>
+              <h4>Незавершенная работа</h4>
               <p>{report.summary.wip_open_tasks}</p>
             </article>
             <article className="settings-card">
@@ -63,13 +78,31 @@ export function ReportsPage({ report, loading, days, bucket, onDaysChange, onBuc
               <p>{report.summary.blocked_open_tasks}</p>
             </article>
             <article className="settings-card">
-              <h4>Flow efficiency</h4>
+              <h4>Эффективность потока</h4>
               <p>{report.summary.flow_efficiency_percent == null ? '—' : `${report.summary.flow_efficiency_percent.toFixed(1)}%`}</p>
             </article>
             <article className="settings-card">
-              <h4>Velocity</h4>
+              <h4>Скорость завершения</h4>
               <p>{report.summary.velocity_per_period.toFixed(2)} / период</p>
             </article>
+          </div>
+
+          <div className="settings-card reports-chart">
+            <h4>Распределение активного WIP</h4>
+            <div className="report-breakdown">
+              <div>
+                <strong>Классы обслуживания</strong>
+                {Object.entries(report.summary.service_class_counts ?? {}).map(([name, count]) => (
+                  <p key={`sc-${name}`}><span className="badge">{serviceClassLabels[name] ?? name}</span> {count}</p>
+                ))}
+              </div>
+              <div>
+                <strong>Типы работ</strong>
+                {Object.entries(report.summary.work_type_counts ?? {}).map(([name, count]) => (
+                  <p key={`wt-${name}`}><span className="badge">{workTypeLabels[name] ?? name}</span> {count}</p>
+                ))}
+              </div>
+            </div>
           </div>
 
 
