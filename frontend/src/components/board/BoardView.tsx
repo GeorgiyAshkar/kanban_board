@@ -3,7 +3,7 @@ import type { BoardColumn, ChecklistItem, Task } from '../../types/task';
 import type { Tag } from '../../api/tasks';
 import emojiConfig from '../../emoji_config.json';
 
-type LaneMode = 'none' | 'priority' | 'assignee' | 'project' | 'blocked';
+type LaneMode = 'none' | 'priority' | 'assignee' | 'project' | 'blocked' | 'serviceClass' | 'workType';
 
 interface Props {
   columns: BoardColumn[];
@@ -38,6 +38,21 @@ const priorityLabel: Record<string, string> = {
   low: 'Низкий',
 };
 
+const serviceClassLabel: Record<string, string> = {
+  expedite: 'Срочный',
+  fixed_date: 'Фиксированная дата',
+  standard: 'Стандартный',
+  intangible: 'Улучшение',
+};
+
+const workTypeLabel: Record<string, string> = {
+  feature: 'Фича',
+  bug: 'Баг',
+  support: 'Поддержка',
+  ops: 'Операции',
+  research: 'Исследование',
+};
+
 const getAssigneeName = (task: Task): string => {
   const fullName = [task.assignee_last_name, task.assignee_first_name, task.assignee_middle_name].filter(Boolean).join(' ').trim();
   return fullName || task.assignee_email || task.assignee_org || 'Без исполнителя';
@@ -48,6 +63,8 @@ const getLaneName = (task: Task, laneMode: LaneMode): string => {
   if (laneMode === 'assignee') return getAssigneeName(task);
   if (laneMode === 'project') return task.project_id?.trim() || 'Без проекта';
   if (laneMode === 'blocked') return task.is_blocked ? 'Заблокировано' : 'Без блокировки';
+  if (laneMode === 'serviceClass') return serviceClassLabel[task.service_class ?? 'standard'] ?? 'Стандартный';
+  if (laneMode === 'workType') return workTypeLabel[task.work_type ?? 'feature'] ?? 'Фича';
   return 'Все задачи';
 };
 
@@ -55,6 +72,8 @@ const buildLanes = (tasks: Task[], laneMode: LaneMode): string[] => {
   if (laneMode === 'none') return ['Все задачи'];
   if (laneMode === 'priority') return ['Критический', 'Высокий', 'Обычный', 'Низкий'].filter((lane) => tasks.some((task) => getLaneName(task, laneMode) === lane));
   if (laneMode === 'blocked') return ['Заблокировано', 'Без блокировки'].filter((lane) => tasks.some((task) => getLaneName(task, laneMode) === lane));
+  if (laneMode === 'serviceClass') return ['Срочный', 'Фиксированная дата', 'Стандартный', 'Улучшение'].filter((lane) => tasks.some((task) => getLaneName(task, laneMode) === lane));
+  if (laneMode === 'workType') return ['Баг', 'Поддержка', 'Операции', 'Исследование', 'Фича'].filter((lane) => tasks.some((task) => getLaneName(task, laneMode) === lane));
   return Array.from(new Set(tasks.map((task) => getLaneName(task, laneMode)))).sort((a, b) => a.localeCompare(b, 'ru'));
 };
 
@@ -138,12 +157,12 @@ export function BoardView({
           </span>
           {isWipExceeded && (
             <span className="badge badge-danger">
-              WIP limit
+              Лимит НЗР
             </span>
           )}
           {slaBreaches > 0 && (
             <span className="badge badge-accent">
-              SLA: {slaBreaches}
+              Просрочка: {slaBreaches}
             </span>
           )}
         </h3>
@@ -224,8 +243,11 @@ export function BoardView({
                 <div className="muted">{task.description?.slice(0, 70) || 'Без описания'}</div>
                 <div className="badges">
                   {task.deadline_at && <span className="muted">Дедлайн: {new Date(task.deadline_at).toLocaleDateString()}</span>}
+                  {task.service_class === 'expedite' && <span className="badge badge-danger" title={task.policy_note ?? 'Ускоренный класс обслуживания'}>Срочный</span>}
+                  {task.service_class === 'fixed_date' && <span className="badge badge-accent" title={task.policy_note ?? 'Фиксированная дата'}>Фиксированная дата</span>}
+                  {task.work_type && <span className="badge">{workTypeLabel[task.work_type] ?? task.work_type}</span>}
                   {task.is_blocked && <span className="badge badge-danger" title={task.block_reason ?? 'Задача заблокирована'}>Блокер</span>}
-                  {taskSlaBreached && <span className="badge badge-accent">SLA просрочен</span>}
+                  {taskSlaBreached && <span className="badge badge-accent">Срок просрочен</span>}
                   {task.is_blocked && task.block_reason && <span className="muted">🚧 {task.block_reason}</span>}
                   {estimate > 0 && (
                     <span className={`time-pill ${timeOverrun ? 'overrun' : ''}`}>⏱ {spent}/{estimate} мин</span>
@@ -273,9 +295,11 @@ export function BoardView({
             <option value="assignee">По исполнителю</option>
             <option value="project">По проекту</option>
             <option value="blocked">По блокировкам</option>
+            <option value="serviceClass">По классу обслуживания</option>
+            <option value="workType">По типу работ</option>
           </select>
         </label>
-        <span className="muted">Дорожки помогают разделять поток по приоритетам, командам, проектам или блокировкам.</span>
+        <span className="muted">Дорожки помогают разделять поток по приоритетам, командам, проектам, блокировкам, классам обслуживания и типам работ.</span>
       </div>
       {laneMode === 'none' ? (
         <div className="columns">

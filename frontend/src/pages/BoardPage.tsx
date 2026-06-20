@@ -57,7 +57,7 @@ export function BoardPage({
   taskChecklistByTaskId,
   onArchiveTask,
 }: Props) {
-  const [laneMode, setLaneMode] = useState<'none' | 'priority' | 'assignee' | 'project' | 'blocked'>('none');
+  const [laneMode, setLaneMode] = useState<'none' | 'priority' | 'assignee' | 'project' | 'blocked' | 'serviceClass' | 'workType'>('none');
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return tasks;

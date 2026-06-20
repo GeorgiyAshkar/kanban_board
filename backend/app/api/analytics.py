@@ -97,6 +97,13 @@ def analytics_report(
 
     total_tasks = len(tasks)
     completed_tasks = len([task for task in tasks if task.done_at])
+    service_class_counts: dict[str, int] = {}
+    work_type_counts: dict[str, int] = {}
+    for task in tasks:
+        if not task.is_done:
+            service_class_counts[task.service_class or "standard"] = service_class_counts.get(task.service_class or "standard", 0) + 1
+            work_type_counts[task.work_type or "feature"] = work_type_counts.get(task.work_type or "feature", 0) + 1
+
     summary = AnalyticsSummary(
         window_start=window_start,
         window_end=now,
@@ -110,5 +117,7 @@ def analytics_report(
         velocity_per_period=(completed_tasks / len(buckets)) if buckets else 0,
         avg_lead_time_hours=(sum(lead_values) / len(lead_values)) if lead_values else None,
         avg_cycle_time_hours=(sum(cycle_values) / len(cycle_values)) if cycle_values else None,
+        service_class_counts=service_class_counts,
+        work_type_counts=work_type_counts,
     )
     return AnalyticsReportResponse(summary=summary, trend=buckets)

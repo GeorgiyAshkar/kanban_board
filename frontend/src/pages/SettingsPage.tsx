@@ -86,7 +86,7 @@ export function SettingsPage({
                 min={1}
                 max={720}
                 defaultValue={col.sla_hours ?? ''}
-                placeholder="SLA, ч"
+                placeholder="Срок, ч"
                 onBlur={async (e) => {
                   const raw = e.target.value.trim();
                   const next = raw ? Number(raw) : null;

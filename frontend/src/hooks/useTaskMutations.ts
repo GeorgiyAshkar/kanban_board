@@ -56,6 +56,8 @@ export const useTaskMutations = ({ activeTaskId, setActiveTaskId }: UseTaskMutat
       plannedReturnAt,
       deadlineAt,
       projectId,
+      serviceClass,
+      workType,
     }: {
       title: string;
       description: string;
@@ -65,6 +67,8 @@ export const useTaskMutations = ({ activeTaskId, setActiveTaskId }: UseTaskMutat
       plannedReturnAt: string | null;
       deadlineAt: string | null;
       projectId: string | null;
+      serviceClass?: Task['service_class'];
+      workType?: Task['work_type'];
     }) => {
       await createTaskWithPayload({
         title,
@@ -75,6 +79,8 @@ export const useTaskMutations = ({ activeTaskId, setActiveTaskId }: UseTaskMutat
         planned_return_at: plannedReturnAt,
         deadline_at: deadlineAt,
         project_id: projectId,
+        service_class: serviceClass ?? 'standard',
+        work_type: workType ?? 'feature',
       });
       await refreshBoardData();
     },

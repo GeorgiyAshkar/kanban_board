@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from app.models.models import ReminderNotificationStatus, ReminderRepeatType, TaskPriority
+from app.models.models import ReminderNotificationStatus, ReminderRepeatType, TaskPriority, TaskServiceClass, TaskWorkType
 
 
 class TaskBase(BaseModel):
@@ -31,6 +31,9 @@ class TaskBase(BaseModel):
     is_blocked: bool = False
     block_reason: Optional[str] = None
     blocker_task_id: Optional[int] = None
+    service_class: TaskServiceClass = TaskServiceClass.STANDARD
+    work_type: TaskWorkType = TaskWorkType.FEATURE
+    policy_note: Optional[str] = None
 
 
 class TaskCreate(TaskBase):
@@ -62,6 +65,9 @@ class TaskPatch(BaseModel):
     is_blocked: Optional[bool] = None
     block_reason: Optional[str] = None
     blocker_task_id: Optional[int] = None
+    service_class: Optional[TaskServiceClass] = None
+    work_type: Optional[TaskWorkType] = None
+    policy_note: Optional[str] = None
 
 
 class TaskRead(TaskBase):
@@ -297,6 +303,8 @@ class AnalyticsSummary(BaseModel):
     velocity_per_period: float
     avg_lead_time_hours: float | None = None
     avg_cycle_time_hours: float | None = None
+    service_class_counts: dict[str, int] = Field(default_factory=dict)
+    work_type_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class AnalyticsReportResponse(BaseModel):
@@ -335,6 +343,9 @@ class BackupTaskItem(BaseModel):
     is_blocked: bool = False
     block_reason: str | None = None
     blocker_task_id: int | None = None
+    service_class: TaskServiceClass = TaskServiceClass.STANDARD
+    work_type: TaskWorkType = TaskWorkType.FEATURE
+    policy_note: str | None = None
     is_done: bool = False
     is_archived: bool = False
     done_at: datetime | None = None

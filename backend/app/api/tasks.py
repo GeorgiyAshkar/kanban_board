@@ -22,6 +22,7 @@ from app.schemas.schemas import (
     TaskPatch,
     TaskRead,
 )
+from app.services.automation import AutomationPolicyViolation, validate_column_transition
 from app.services.history import log_history
 from app.services.tasks import touch_task
 
@@ -325,6 +326,12 @@ def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)):
     if "is_done" in update_values:
         is_done_value = update_values["is_done"]
         if is_done_value is True and task.done_at is None:
+            done_column = db.scalar(select(BoardColumn).where(BoardColumn.canonical_status == "done"))
+            if done_column:
+                try:
+                    validate_column_transition(db, task_id=task.id, target_column=done_column)
+                except AutomationPolicyViolation as exc:
+                    raise HTTPException(status_code=409, detail=str(exc)) from exc
             update_values["done_at"] = datetime.utcnow()
         elif is_done_value is False:
             update_values["done_at"] = None
@@ -409,6 +416,10 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
 
     done_column = db.scalar(select(BoardColumn).where(BoardColumn.name == "Готово"))
     if done_column:
+        try:
+            validate_column_transition(db, task_id=task.id, target_column=done_column)
+        except AutomationPolicyViolation as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         task.board_column_id = done_column.id
         task.status = done_column.canonical_status
 
@@ -427,6 +438,11 @@ def move_task(task_id: int, payload: TaskMove, db: Session = Depends(get_db)):
     target_column = db.get(BoardColumn, payload.board_column_id)
     if not target_column:
         raise HTTPException(status_code=404, detail="Column not found")
+
+    try:
+        validate_column_transition(db, task_id=task.id, target_column=target_column)
+    except AutomationPolicyViolation as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     old_column_id = task.board_column_id
     old_status = task.status
