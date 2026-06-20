@@ -4,7 +4,7 @@ import type { Tag } from '../../api/tasks';
 import emojiConfig from '../../emoji_config.json';
 
 type LaneMode = 'none' | 'priority' | 'assignee' | 'project' | 'blocked' | 'serviceClass' | 'workType';
-type ViewMode = 'board' | 'table' | 'calendar';
+type ViewMode = 'board' | 'table' | 'calendar' | 'timeline';
 
 interface Props {
   columns: BoardColumn[];
@@ -388,6 +388,49 @@ export function BoardView({
     );
   };
 
+
+  const renderTimelineView = () => {
+    const timelineTasks = tasks
+      .filter((task) => task.deadline_at || task.planned_return_at)
+      .sort((a, b) => {
+        const aStart = new Date(a.planned_return_at ?? a.deadline_at ?? a.created_at).getTime();
+        const bStart = new Date(b.planned_return_at ?? b.deadline_at ?? b.created_at).getTime();
+        return aStart - bStart || a.position - b.position || a.id - b.id;
+      });
+
+    if (timelineTasks.length === 0) {
+      return <div className="empty-state">Нет задач с датами для таймлайна. Добавьте дедлайн или дату возврата, чтобы спланировать работы во времени.</div>;
+    }
+
+    return (
+      <div className="timeline-view">
+        {timelineTasks.map((task) => {
+          const startLabel = task.planned_return_at ? formatDate(task.planned_return_at) : 'Старт не задан';
+          const endLabel = task.deadline_at ? formatDate(task.deadline_at) : 'Дедлайн не задан';
+          const checklist = taskChecklistByTaskId[task.id] ?? [];
+          const done = checklist.filter((item) => item.is_done).length;
+          const progress = checklist.length > 0 ? Math.round((done / checklist.length) * 100) : task.is_done ? 100 : 0;
+          return (
+            <button key={task.id} className="timeline-item" onClick={() => onOpenTask(task.id)}>
+              <div className="timeline-date">
+                <strong>{startLabel}</strong>
+                <span>→ {endLabel}</span>
+              </div>
+              <div className="timeline-line" aria-hidden="true">
+                <span style={{ width: `${Math.max(progress, 8)}%` }} />
+              </div>
+              <div className="timeline-card">
+                <strong>{priorityDot[task.priority] ?? priorityDot.normal} {task.title}</strong>
+                <span className="muted">{getColumnName(columns, task)} · {getAssigneeName(task)} · прогресс {progress}%</span>
+                {task.project_id && <span className="badge">{task.project_id}</span>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderBoardContent = () => laneMode === 'none' ? (
     <div className="columns">
       {columns.map((column) => renderColumn(column, tasks))}
@@ -420,6 +463,7 @@ export function BoardView({
             <option value="board">Канбан-доска</option>
             <option value="table">Таблица</option>
             <option value="calendar">Календарь</option>
+            <option value="timeline">Таймлайн</option>
           </select>
         </label>
         <label>
@@ -434,11 +478,12 @@ export function BoardView({
             <option value="workType">По типу работ</option>
           </select>
         </label>
-        <span className="muted">Переключайтесь между доской, таблицей и календарем: так удобнее планировать дедлайны, проверять загрузку и находить задачи.</span>
+        <span className="muted">Переключайтесь между доской, таблицей, календарем и таймлайном: так удобнее планировать дедлайны, проверять загрузку и находить задачи.</span>
       </div>
       {viewMode === 'board' && renderBoardContent()}
       {viewMode === 'table' && renderTableView()}
       {viewMode === 'calendar' && renderCalendarView()}
+      {viewMode === 'timeline' && renderTimelineView()}
     </div>
   );
 }
