@@ -58,6 +58,7 @@ export function BoardPage({
   onArchiveTask,
 }: Props) {
   const [laneMode, setLaneMode] = useState<'none' | 'priority' | 'assignee' | 'project' | 'blocked' | 'serviceClass' | 'workType'>('none');
+  const [viewMode, setViewMode] = useState<'board' | 'table' | 'calendar'>('board');
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return tasks;
@@ -76,6 +77,8 @@ export function BoardPage({
         columns={columns}
         laneMode={laneMode}
         onLaneModeChange={setLaneMode}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         tasks={visibleTasks}
         onOpenTask={setActiveTaskId}
         onMoveTask={onMoveTask}

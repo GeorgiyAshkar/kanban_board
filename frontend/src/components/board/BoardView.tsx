@@ -4,11 +4,14 @@ import type { Tag } from '../../api/tasks';
 import emojiConfig from '../../emoji_config.json';
 
 type LaneMode = 'none' | 'priority' | 'assignee' | 'project' | 'blocked' | 'serviceClass' | 'workType';
+type ViewMode = 'board' | 'table' | 'calendar';
 
 interface Props {
   columns: BoardColumn[];
   laneMode: LaneMode;
   onLaneModeChange: (mode: LaneMode) => void;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   tasks: Task[];
   onOpenTask: (taskId: number) => void;
   onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
@@ -77,6 +80,21 @@ const buildLanes = (tasks: Task[], laneMode: LaneMode): string[] => {
   return Array.from(new Set(tasks.map((task) => getLaneName(task, laneMode)))).sort((a, b) => a.localeCompare(b, 'ru'));
 };
 
+
+const toDateKey = (value: string | null): string | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+};
+
+const formatDate = (value: string | null): string => (value ? new Date(value).toLocaleDateString('ru-RU') : '—');
+
+const getColumnName = (columns: BoardColumn[], task: Task): string => {
+  const column = columns.find((item) => item.id === task.board_column_id);
+  return column?.name ?? task.status;
+};
+
 const toCardBackground = (colorMark?: string | null, fallback?: string): string => {
   if (!colorMark) return fallback ?? priorityBg.normal;
   const normalized = colorMark.trim();
@@ -95,6 +113,8 @@ export function BoardView({
   columns,
   laneMode,
   onLaneModeChange,
+  viewMode,
+  onViewModeChange,
   tasks,
   onOpenTask,
   onMoveTask,
@@ -284,12 +304,127 @@ export function BoardView({
     );
   };
 
+  const renderTableView = () => {
+    const sortedTasks = [...tasks].sort((a, b) => {
+      const aDeadline = a.deadline_at ? new Date(a.deadline_at).getTime() : Number.MAX_SAFE_INTEGER;
+      const bDeadline = b.deadline_at ? new Date(b.deadline_at).getTime() : Number.MAX_SAFE_INTEGER;
+      return aDeadline - bDeadline || a.position - b.position || a.id - b.id;
+    });
+
+    return (
+      <div className="board-table-wrap">
+        <table className="board-table">
+          <thead>
+            <tr>
+              <th>Задача</th>
+              <th>Колонка</th>
+              <th>Приоритет</th>
+              <th>Исполнитель</th>
+              <th>Проект</th>
+              <th>Дедлайн</th>
+              <th>Чек-лист</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedTasks.map((task) => {
+              const checklist = taskChecklistByTaskId[task.id] ?? [];
+              const done = checklist.filter((item) => item.is_done).length;
+              return (
+                <tr key={task.id} onClick={() => onOpenTask(task.id)}>
+                  <td>
+                    <strong>{task.title}</strong>
+                    <div className="muted">{task.description?.slice(0, 90) || 'Без описания'}</div>
+                  </td>
+                  <td>{getColumnName(columns, task)}</td>
+                  <td>{priorityDot[task.priority]} {priorityLabel[task.priority] ?? task.priority}</td>
+                  <td>{getAssigneeName(task)}</td>
+                  <td>{task.project_id || '—'}</td>
+                  <td>{formatDate(task.deadline_at)}</td>
+                  <td>{checklist.length ? `${done}/${checklist.length}` : '—'}</td>
+                  <td>
+                    <div className="badges">
+                      {task.is_blocked && <span className="badge badge-danger">Блокер</span>}
+                      {task.is_done && <span className="badge badge-success">Готово</span>}
+                      {task.service_class === 'expedite' && <span className="badge badge-danger">Срочный</span>}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const renderCalendarView = () => {
+    const tasksWithDates = tasks.filter((task) => task.deadline_at || task.planned_return_at);
+    const dateKeys = Array.from(
+      new Set(tasksWithDates.flatMap((task) => [toDateKey(task.deadline_at), toDateKey(task.planned_return_at)].filter((key): key is string => Boolean(key)))),
+    ).sort();
+
+    if (dateKeys.length === 0) {
+      return <div className="empty-state">Нет задач с дедлайном или датой возврата. Укажите даты в карточках, чтобы увидеть календарный план.</div>;
+    }
+
+    return (
+      <div className="calendar-view">
+        {dateKeys.map((dateKey) => {
+          const dayTasks = tasksWithDates.filter((task) => toDateKey(task.deadline_at) === dateKey || toDateKey(task.planned_return_at) === dateKey);
+          return (
+            <section key={dateKey} className="calendar-day">
+              <h3>{new Date(`${dateKey}T00:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' })}</h3>
+              {dayTasks.map((task) => (
+                <button key={task.id} className="calendar-task" onClick={() => onOpenTask(task.id)}>
+                  <span>{priorityDot[task.priority] ?? priorityDot.normal} {task.title}</span>
+                  <span className="muted">{toDateKey(task.deadline_at) === dateKey ? 'Дедлайн' : 'Возврат'} · {getColumnName(columns, task)}</span>
+                </button>
+              ))}
+            </section>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderBoardContent = () => laneMode === 'none' ? (
+    <div className="columns">
+      {columns.map((column) => renderColumn(column, tasks))}
+    </div>
+  ) : (
+    <div className="swimlane-board">
+      {lanes.map((lane) => {
+        const laneTasks = tasks.filter((task) => getLaneName(task, laneMode) === lane);
+        return (
+          <section key={lane} className="swimlane">
+            <div className="swimlane-title">
+              <span>{lane}</span>
+              <span className="muted">{laneTasks.length}</span>
+            </div>
+            <div className="columns swimlane-columns">
+              {columns.map((column) => renderColumn(column, laneTasks, lane))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="board-view">
       <div className="board-toolbar">
         <label>
+          Вид
+          <select className="select-styled" value={viewMode} onChange={(e) => onViewModeChange(e.target.value as ViewMode)}>
+            <option value="board">Канбан-доска</option>
+            <option value="table">Таблица</option>
+            <option value="calendar">Календарь</option>
+          </select>
+        </label>
+        <label>
           Дорожки
-          <select className="select-styled" value={laneMode} onChange={(e) => onLaneModeChange(e.target.value as LaneMode)}>
+          <select className="select-styled" value={laneMode} onChange={(e) => onLaneModeChange(e.target.value as LaneMode)} disabled={viewMode !== 'board'}>
             <option value="none">Без дорожек</option>
             <option value="priority">По приоритету</option>
             <option value="assignee">По исполнителю</option>
@@ -299,30 +434,11 @@ export function BoardView({
             <option value="workType">По типу работ</option>
           </select>
         </label>
-        <span className="muted">Дорожки помогают разделять поток по приоритетам, командам, проектам, блокировкам, классам обслуживания и типам работ.</span>
+        <span className="muted">Переключайтесь между доской, таблицей и календарем: так удобнее планировать дедлайны, проверять загрузку и находить задачи.</span>
       </div>
-      {laneMode === 'none' ? (
-        <div className="columns">
-          {columns.map((column) => renderColumn(column, tasks))}
-        </div>
-      ) : (
-        <div className="swimlane-board">
-          {lanes.map((lane) => {
-            const laneTasks = tasks.filter((task) => getLaneName(task, laneMode) === lane);
-            return (
-              <section key={lane} className="swimlane">
-                <div className="swimlane-title">
-                  <span>{lane}</span>
-                  <span className="muted">{laneTasks.length}</span>
-                </div>
-                <div className="columns swimlane-columns">
-                  {columns.map((column) => renderColumn(column, laneTasks, lane))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      )}
+      {viewMode === 'board' && renderBoardContent()}
+      {viewMode === 'table' && renderTableView()}
+      {viewMode === 'calendar' && renderCalendarView()}
     </div>
   );
 }
