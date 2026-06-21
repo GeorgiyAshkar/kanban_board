@@ -37,6 +37,17 @@ export interface Task {
   policy_note?: string | null;
 }
 
+
+export interface AssigneeProfile {
+  id: string;
+  last_name: string;
+  first_name: string;
+  middle_name: string;
+  phone: string;
+  email: string;
+  org: string;
+}
+
 export interface BoardColumn {
   id: number;
   name: string;

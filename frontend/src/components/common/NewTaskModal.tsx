@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { BoardColumn, TaskServiceClass, TaskWorkType } from '../../types/task';
+import type { AssigneeProfile, BoardColumn, TaskServiceClass, TaskWorkType } from '../../types/task';
 
 interface Props {
   open: boolean;
   columns: BoardColumn[];
+  assigneeProfiles: AssigneeProfile[];
   onClose: () => void;
   onSubmit: (payload: {
     title: string;
@@ -16,10 +17,11 @@ interface Props {
     projectId: string | null;
     serviceClass: TaskServiceClass;
     workType: TaskWorkType;
+    assigneeProfile: Omit<AssigneeProfile, 'id'> | null;
   }) => Promise<void>;
 }
 
-export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
+export function NewTaskModal({ open, columns, assigneeProfiles, onClose, onSubmit }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [columnId, setColumnId] = useState<number>(columns[0]?.id ?? 0);
@@ -29,6 +31,7 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
   const [projectId, setProjectId] = useState('');
   const [serviceClass, setServiceClass] = useState<TaskServiceClass>('standard');
   const [workType, setWorkType] = useState<TaskWorkType>('feature');
+  const [assigneeProfileId, setAssigneeProfileId] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -57,6 +60,16 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
 
           <label>Проект</label>
           <input value={projectId} onChange={(e) => setProjectId(e.target.value)} placeholder="Например: Website, CRM, Support" />
+
+          <label>Исполнитель</label>
+          <select className="select-styled" value={assigneeProfileId} onChange={(e) => setAssigneeProfileId(e.target.value)}>
+            <option value="">Без исполнителя</option>
+            {assigneeProfiles.map((profile) => {
+              const fullName = [profile.last_name, profile.first_name, profile.middle_name].filter(Boolean).join(' ').trim();
+              const label = fullName || profile.email || profile.org || 'Исполнитель без имени';
+              return <option key={profile.id} value={profile.id}>{label}</option>;
+            })}
+          </select>
 
           <label>Класс обслуживания</label>
           <select className="select-styled" value={serviceClass} onChange={(e) => setServiceClass(e.target.value as TaskServiceClass)}>
@@ -97,6 +110,7 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
             onClick={async () => {
               if (!title.trim()) return;
               const selectedColumn = columns.find((c) => c.id === columnId) ?? columns[0];
+              const selectedAssignee = assigneeProfiles.find((profile) => profile.id === assigneeProfileId);
               await onSubmit({
                 title: title.trim(),
                 description: description.trim(),
@@ -108,6 +122,14 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
                 projectId: projectId.trim() || null,
                 serviceClass,
                 workType,
+                assigneeProfile: selectedAssignee ? {
+                  last_name: selectedAssignee.last_name,
+                  first_name: selectedAssignee.first_name,
+                  middle_name: selectedAssignee.middle_name,
+                  phone: selectedAssignee.phone,
+                  email: selectedAssignee.email,
+                  org: selectedAssignee.org,
+                } : null,
               });
               setTitle('');
               setDescription('');
@@ -117,6 +139,7 @@ export function NewTaskModal({ open, columns, onClose, onSubmit }: Props) {
               setProjectId('');
               setServiceClass('standard');
               setWorkType('feature');
+              setAssigneeProfileId('');
               onClose();
             }}
           >

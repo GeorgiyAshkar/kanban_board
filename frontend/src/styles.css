@@ -253,6 +253,20 @@ body { margin: 0; background: var(--app-bg); overflow-x: hidden; -webkit-text-si
 .settings-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 6px; align-items: center; }
 .settings-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font-size: var(--font-text); }
 .settings-hint { color: var(--muted-text); font-size: var(--font-meta); }
+
+.settings-card-wide { grid-column: 1 / -1; }
+.settings-assignee-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.settings-assignee-new {
+  border-top: 1px solid var(--surface-border);
+  padding-top: 10px;
+}
+
 .settings-preview { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .reports-page { background: var(--panel-bg); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-panel); padding: 16px; display: grid; gap: 12px; overflow: auto; }
 .reports-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

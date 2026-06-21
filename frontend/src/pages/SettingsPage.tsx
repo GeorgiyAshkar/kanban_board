@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { BoardColumn } from '../types/task';
+import type { AssigneeProfile, BoardColumn } from '../types/task';
 import type { BackupImportResponse, BackupPayload, Tag } from '../api/tasks';
 
 interface Props {
@@ -15,6 +15,10 @@ interface Props {
   onExportBackup: (kind: 'json' | 'csv' | 'archive') => Promise<void>;
   onImportBackup: (backup: BackupPayload, mode: 'merge' | 'replace_all') => Promise<BackupImportResponse>;
   onDryRunBackupImport: (backup: BackupPayload, mode: 'merge' | 'replace_all') => Promise<BackupImportResponse>;
+  assigneeProfiles: AssigneeProfile[];
+  onCreateAssigneeProfile: (profile: Omit<AssigneeProfile, 'id'>) => void;
+  onUpdateAssigneeProfile: (profileId: string, profile: Omit<AssigneeProfile, 'id'>) => void;
+  onDeleteAssigneeProfile: (profileId: string) => void;
 }
 
 export function SettingsPage({
@@ -30,6 +34,10 @@ export function SettingsPage({
   onExportBackup,
   onImportBackup,
   onDryRunBackupImport,
+  assigneeProfiles,
+  onCreateAssigneeProfile,
+  onUpdateAssigneeProfile,
+  onDeleteAssigneeProfile,
 }: Props) {
   const [newColumn, setNewColumn] = useState('');
   const [newTagName, setNewTagName] = useState('');
@@ -37,6 +45,27 @@ export function SettingsPage({
   const [importMode, setImportMode] = useState<'merge' | 'replace_all'>('merge');
   const [backupPreview, setBackupPreview] = useState<BackupImportResponse | null>(null);
   const [loadedBackup, setLoadedBackup] = useState<BackupPayload | null>(null);
+  const [newAssignee, setNewAssignee] = useState<Omit<AssigneeProfile, 'id'>>({
+    last_name: '',
+    first_name: '',
+    middle_name: '',
+    phone: '',
+    email: '',
+    org: '',
+  });
+
+  const updateNewAssigneeField = (field: keyof Omit<AssigneeProfile, 'id'>, value: string) => {
+    setNewAssignee((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const normalizeAssignee = (profile: Omit<AssigneeProfile, 'id'>): Omit<AssigneeProfile, 'id'> => ({
+    last_name: profile.last_name.trim(),
+    first_name: profile.first_name.trim(),
+    middle_name: profile.middle_name.trim(),
+    phone: profile.phone.trim(),
+    email: profile.email.trim(),
+    org: profile.org.trim(),
+  });
 
   return (
     <section className="settings-page">
@@ -180,6 +209,73 @@ export function SettingsPage({
             </div>
           )}
         </div>
+
+        <div className="settings-card settings-card-wide">
+          <h4>Исполнители</h4>
+          <p className="settings-hint">Составьте справочник исполнителей: эти данные можно выбрать при создании новой задачи.</p>
+          {assigneeProfiles.map((profile) => (
+            <div key={profile.id} className="settings-assignee-row">
+              <input
+                className="settings-input"
+                defaultValue={profile.last_name}
+                onBlur={(e) => onUpdateAssigneeProfile(profile.id, { ...profile, last_name: e.target.value.trim() })}
+                placeholder="Фамилия"
+              />
+              <input
+                className="settings-input"
+                defaultValue={profile.first_name}
+                onBlur={(e) => onUpdateAssigneeProfile(profile.id, { ...profile, first_name: e.target.value.trim() })}
+                placeholder="Имя"
+              />
+              <input
+                className="settings-input"
+                defaultValue={profile.middle_name}
+                onBlur={(e) => onUpdateAssigneeProfile(profile.id, { ...profile, middle_name: e.target.value.trim() })}
+                placeholder="Отчество"
+              />
+              <input
+                className="settings-input"
+                defaultValue={profile.phone}
+                onBlur={(e) => onUpdateAssigneeProfile(profile.id, { ...profile, phone: e.target.value.trim() })}
+                placeholder="Мобильный телефон"
+              />
+              <input
+                className="settings-input"
+                defaultValue={profile.email}
+                onBlur={(e) => onUpdateAssigneeProfile(profile.id, { ...profile, email: e.target.value.trim() })}
+                placeholder="Email"
+              />
+              <input
+                className="settings-input"
+                defaultValue={profile.org}
+                onBlur={(e) => onUpdateAssigneeProfile(profile.id, { ...profile, org: e.target.value.trim() })}
+                placeholder="Организация"
+              />
+              <button className="small-btn" onClick={() => onDeleteAssigneeProfile(profile.id)} aria-label="Удалить исполнителя">Удалить</button>
+            </div>
+          ))}
+
+          <div className="settings-assignee-row settings-assignee-new">
+            <input className="settings-input" value={newAssignee.last_name} onChange={(e) => updateNewAssigneeField('last_name', e.target.value)} placeholder="Фамилия" />
+            <input className="settings-input" value={newAssignee.first_name} onChange={(e) => updateNewAssigneeField('first_name', e.target.value)} placeholder="Имя" />
+            <input className="settings-input" value={newAssignee.middle_name} onChange={(e) => updateNewAssigneeField('middle_name', e.target.value)} placeholder="Отчество" />
+            <input className="settings-input" value={newAssignee.phone} onChange={(e) => updateNewAssigneeField('phone', e.target.value)} placeholder="Мобильный телефон" />
+            <input className="settings-input" value={newAssignee.email} onChange={(e) => updateNewAssigneeField('email', e.target.value)} placeholder="Email" />
+            <input className="settings-input" value={newAssignee.org} onChange={(e) => updateNewAssigneeField('org', e.target.value)} placeholder="Организация" />
+            <button
+              className="small-btn"
+              onClick={() => {
+                const normalized = normalizeAssignee(newAssignee);
+                if (!Object.values(normalized).some(Boolean)) return;
+                onCreateAssigneeProfile(normalized);
+                setNewAssignee({ last_name: '', first_name: '', middle_name: '', phone: '', email: '', org: '' });
+              }}
+            >
+              Добавить
+            </button>
+          </div>
+        </div>
+
 
         <div className="settings-card">
           <h4>Теги</h4>
