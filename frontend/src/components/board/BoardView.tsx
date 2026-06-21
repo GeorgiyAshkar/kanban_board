@@ -12,6 +12,15 @@ interface Props {
   onLaneModeChange: (mode: LaneMode) => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  selectedProject: string;
+  onSelectedProjectChange: (project: string) => void;
+  projectOptions: string[];
+  selectedAssignee: string;
+  onSelectedAssigneeChange: (assignee: string) => void;
+  assigneeOptions: string[];
+  projectAssignees: string[];
+  assigneeProjects: string[];
+  totalTasksCount: number;
   tasks: Task[];
   onOpenTask: (taskId: number) => void;
   onMoveTask: (taskId: number, columnId: number, position: number) => Promise<void>;
@@ -115,6 +124,15 @@ export function BoardView({
   onLaneModeChange,
   viewMode,
   onViewModeChange,
+  selectedProject,
+  onSelectedProjectChange,
+  projectOptions,
+  selectedAssignee,
+  onSelectedAssigneeChange,
+  assigneeOptions,
+  projectAssignees,
+  assigneeProjects,
+  totalTasksCount,
   tasks,
   onOpenTask,
   onMoveTask,
@@ -434,8 +452,42 @@ export function BoardView({
             <option value="workType">По типу работ</option>
           </select>
         </label>
-        <span className="muted">Переключайтесь между доской, таблицей и календарем: так удобнее планировать дедлайны, проверять загрузку и находить задачи.</span>
+        <label>
+          Проект
+          <select className="select-styled" value={selectedProject} onChange={(e) => onSelectedProjectChange(e.target.value)}>
+            <option value="">Все проекты</option>
+            {projectOptions.map((project) => (
+              <option key={project} value={project}>{project}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Исполнитель
+          <select className="select-styled" value={selectedAssignee} onChange={(e) => onSelectedAssigneeChange(e.target.value)}>
+            <option value="">Все исполнители</option>
+            {assigneeOptions.map((assignee) => (
+              <option key={assignee} value={assignee}>{assignee}</option>
+            ))}
+          </select>
+        </label>
+        <span className="muted">Показано {tasks.length} из {totalTasksCount}: выбирайте проект, чтобы увидеть задействованных исполнителей, или исполнителя, чтобы увидеть его проекты.</span>
       </div>
+      {(selectedProject || selectedAssignee) && (
+        <div className="board-filter-insights">
+          {selectedProject && (
+            <div className="insight-card">
+              <strong>Исполнители проекта «{selectedProject}»</strong>
+              <span className="muted">{projectAssignees.length ? projectAssignees.join(', ') : 'Нет назначенных исполнителей'}</span>
+            </div>
+          )}
+          {selectedAssignee && (
+            <div className="insight-card">
+              <strong>Проекты исполнителя «{selectedAssignee}»</strong>
+              <span className="muted">{assigneeProjects.length ? assigneeProjects.join(', ') : 'Нет проектов'}</span>
+            </div>
+          )}
+        </div>
+      )}
       {viewMode === 'board' && renderBoardContent()}
       {viewMode === 'table' && renderTableView()}
       {viewMode === 'calendar' && renderCalendarView()}
