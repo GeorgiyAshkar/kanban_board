@@ -28,7 +28,7 @@ import {
   type BoardFilters,
 } from '../api/tasks';
 import { useUIStore } from '../store/uiStore';
-import type { ChecklistItem, Task } from '../types/task';
+import type { AssigneeProfile, ChecklistItem, Task } from '../types/task';
 import { useNotifications } from './useNotifications';
 import { useTaskDetails } from './useTaskDetails';
 
@@ -36,6 +36,7 @@ export type Page = 'board' | 'today' | 'history' | 'archive' | 'reports' | 'sett
 export type SavedBoardFilter = { id: string; name: string; query: string; filters: BoardFilters };
 
 const SAVED_FILTERS_KEY = 'kanban.saved-filters.v1';
+const ASSIGNEE_PROFILES_KEY = 'kanban.assignee-profiles.v1';
 
 export const defaultBoardFilters: BoardFilters = {
   archiveScope: 'active',
@@ -55,6 +56,15 @@ export const useBoardController = () => {
     if (!raw) return [];
     try {
       return JSON.parse(raw) as SavedBoardFilter[];
+    } catch {
+      return [];
+    }
+  });
+  const [assigneeProfiles, setAssigneeProfiles] = useState<AssigneeProfile[]>(() => {
+    const raw = window.localStorage.getItem(ASSIGNEE_PROFILES_KEY);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw) as AssigneeProfile[];
     } catch {
       return [];
     }
@@ -95,6 +105,10 @@ export const useBoardController = () => {
     window.localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(savedFilters));
   }, [savedFilters]);
 
+  useEffect(() => {
+    window.localStorage.setItem(ASSIGNEE_PROFILES_KEY, JSON.stringify(assigneeProfiles));
+  }, [assigneeProfiles]);
+
   const refreshBoardData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['board'] }),
@@ -115,6 +129,7 @@ export const useBoardController = () => {
       setFilters,
       savedFilters,
       setSavedFilters,
+      assigneeProfiles,
       isCreateOpen,
       setIsCreateOpen,
       reportDays,
@@ -152,6 +167,15 @@ export const useBoardController = () => {
       deleteSavedFilter: (filterId: string) => {
         setSavedFilters((prev) => prev.filter((item) => item.id !== filterId));
       },
+      createAssigneeProfile: (profile: Omit<AssigneeProfile, 'id'>) => {
+        setAssigneeProfiles((prev) => [{ id: `${Date.now()}`, ...profile }, ...prev]);
+      },
+      updateAssigneeProfile: (profileId: string, patch: Omit<AssigneeProfile, 'id'>) => {
+        setAssigneeProfiles((prev) => prev.map((profile) => (profile.id === profileId ? { ...patch, id: profileId } : profile)));
+      },
+      deleteAssigneeProfile: (profileId: string) => {
+        setAssigneeProfiles((prev) => prev.filter((profile) => profile.id !== profileId));
+      },
       createTask: async ({
         title,
         description,
@@ -163,6 +187,7 @@ export const useBoardController = () => {
         projectId,
         serviceClass,
         workType,
+        assigneeProfile,
       }: {
         title: string;
         description: string;
@@ -174,6 +199,7 @@ export const useBoardController = () => {
         projectId?: string | null;
         serviceClass?: Task['service_class'];
         workType?: Task['work_type'];
+        assigneeProfile?: Omit<AssigneeProfile, 'id'> | null;
       }) => {
         await createTaskWithPayload({
           title,
@@ -186,6 +212,12 @@ export const useBoardController = () => {
           project_id: projectId ?? null,
           service_class: serviceClass ?? 'standard',
           work_type: workType ?? 'feature',
+          assignee_last_name: assigneeProfile?.last_name || null,
+          assignee_first_name: assigneeProfile?.first_name || null,
+          assignee_middle_name: assigneeProfile?.middle_name || null,
+          assignee_phone: assigneeProfile?.phone || null,
+          assignee_email: assigneeProfile?.email || null,
+          assignee_org: assigneeProfile?.org || null,
         });
         await refreshBoardData();
       },

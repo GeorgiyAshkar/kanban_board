@@ -47,6 +47,7 @@ export default function App() {
       <NewTaskModal
         open={state.isCreateOpen}
         columns={queries.boardQuery.data?.columns ?? []}
+        assigneeProfiles={state.assigneeProfiles}
         onClose={() => state.setIsCreateOpen(false)}
         onSubmit={actions.createTask}
       />
@@ -103,6 +104,10 @@ export default function App() {
             onExportBackup={actions.exportBackup}
             onImportBackup={actions.importBackup}
             onDryRunBackupImport={actions.dryRunBackupImport}
+            assigneeProfiles={state.assigneeProfiles}
+            onCreateAssigneeProfile={actions.createAssigneeProfile}
+            onUpdateAssigneeProfile={actions.updateAssigneeProfile}
+            onDeleteAssigneeProfile={actions.deleteAssigneeProfile}
           />
         )}
         {state.page === 'reports' && (

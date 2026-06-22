@@ -4,6 +4,12 @@ import { TaskDrawer } from '../components/task/TaskDrawer';
 import type { BoardColumn, ChecklistItem, HistoryItem, Task, TaskComment, TaskReminder } from '../types/task';
 import type { Tag } from '../api/tasks';
 
+
+const getAssigneeName = (task: Task): string => {
+  const fullName = [task.assignee_last_name, task.assignee_first_name, task.assignee_middle_name].filter(Boolean).join(' ').trim();
+  return fullName || task.assignee_email || task.assignee_org || 'Без исполнителя';
+};
+
 interface Props {
   columns: BoardColumn[];
   tasks: Task[];
@@ -59,17 +65,48 @@ export function BoardPage({
 }: Props) {
   const [laneMode, setLaneMode] = useState<'none' | 'priority' | 'assignee' | 'project' | 'blocked' | 'serviceClass' | 'workType'>('none');
   const [viewMode, setViewMode] = useState<'board' | 'table' | 'calendar'>('board');
-  const visibleTasks = useMemo(() => {
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedAssignee, setSelectedAssignee] = useState('');
+
+  const searchedTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return tasks;
     return tasks.filter((t) => t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q));
   }, [tasks, query]);
 
-  const activeTask = tasks.find((t) => t.id === activeTaskId);
   const projectOptions = useMemo(
-    () => Array.from(new Set(tasks.map((task) => task.project_id?.trim()).filter((project): project is string => Boolean(project)))).sort((a, b) => a.localeCompare(b, 'ru')),
-    [tasks],
+    () => Array.from(new Set(searchedTasks.map((task) => task.project_id?.trim()).filter((project): project is string => Boolean(project)))).sort((a, b) => a.localeCompare(b, 'ru')),
+    [searchedTasks],
   );
+
+  const assigneeOptions = useMemo(
+    () => Array.from(new Set(searchedTasks.map(getAssigneeName))).sort((a, b) => a.localeCompare(b, 'ru')),
+    [searchedTasks],
+  );
+
+  const visibleTasks = useMemo(() => searchedTasks.filter((task) => {
+    const projectName = task.project_id?.trim() || '';
+    const assigneeName = getAssigneeName(task);
+    return (!selectedProject || projectName === selectedProject) && (!selectedAssignee || assigneeName === selectedAssignee);
+  }), [searchedTasks, selectedProject, selectedAssignee]);
+
+  const projectAssignees = useMemo(() => {
+    if (!selectedProject) return [];
+    return Array.from(new Set(searchedTasks
+      .filter((task) => (task.project_id?.trim() || '') === selectedProject)
+      .map(getAssigneeName)))
+      .sort((a, b) => a.localeCompare(b, 'ru'));
+  }, [searchedTasks, selectedProject]);
+
+  const assigneeProjects = useMemo(() => {
+    if (!selectedAssignee) return [];
+    return Array.from(new Set(searchedTasks
+      .filter((task) => getAssigneeName(task) === selectedAssignee)
+      .map((task) => task.project_id?.trim() || 'Без проекта')))
+      .sort((a, b) => a.localeCompare(b, 'ru'));
+  }, [searchedTasks, selectedAssignee]);
+
+  const activeTask = tasks.find((t) => t.id === activeTaskId);
 
   return (
     <div className="board-layout">
@@ -79,6 +116,15 @@ export function BoardPage({
         onLaneModeChange={setLaneMode}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        selectedProject={selectedProject}
+        onSelectedProjectChange={setSelectedProject}
+        projectOptions={projectOptions}
+        selectedAssignee={selectedAssignee}
+        onSelectedAssigneeChange={setSelectedAssignee}
+        assigneeOptions={assigneeOptions}
+        projectAssignees={projectAssignees}
+        assigneeProjects={assigneeProjects}
+        totalTasksCount={searchedTasks.length}
         tasks={visibleTasks}
         onOpenTask={setActiveTaskId}
         onMoveTask={onMoveTask}
